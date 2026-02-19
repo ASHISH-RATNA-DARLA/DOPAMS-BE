@@ -1,0 +1,39 @@
+# Ignore Mac system files
+.DS_store
+
+# Ignore all .terraform files
+.terraform/**
+
+# Ignore node_modules folder
+node_modules
+.node_modules-*
+
+# Ignore build files
+build
+
+# Ignore lambda-functions/archive/*.zip files
+*/lambda-functions/archive/*.zip
+
+# Ignore files from IntelliJ IDE
+.idea/
+
+# Ignore files from reports
+reports/
+
+# Ignore Environment Files
+.env
+.env-dev
+.env-stage
+.env-prod
+
+# Ignore Build Folder
+build/*
+
+# Ignore logs
+logs/*
+
+# Ignore VScode settings
+.vscode/
+
+# Ignore yarn.lock
+yarn.lock

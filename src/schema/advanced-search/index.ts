@@ -1,0 +1,133 @@
+import { GraphQLObjectType, GraphQLString, GraphQLBoolean, GraphQLNonNull, GraphQLList, GraphQLID } from 'graphql';
+import { AdvancedSearch } from 'interfaces/advanced-search';
+import { PaginationType } from 'schema/pagination/pagination';
+import AdvancedSearchColumnEnumType from './enum/columns';
+
+export const AdvancedSearchResultType: GraphQLObjectType<AdvancedSearch> = new GraphQLObjectType({
+  name: 'AdvancedSearchResultType',
+  fields: () => ({
+    // crimes table
+    id: { type: GraphQLID },
+    psCode: { type: GraphQLString },
+    firNum: { type: GraphQLString },
+    firRegNum: { type: GraphQLString },
+    firType: { type: GraphQLString },
+    sections: { type: GraphQLString },
+    firDate: { type: GraphQLString },
+    caseStatus: { type: GraphQLString },
+    stipulatedPeriodForCS: { type: GraphQLString },
+    caseClass: { type: GraphQLString },
+    majorHead: { type: GraphQLString },
+    minorHead: { type: GraphQLString },
+    crimeType: { type: GraphQLString },
+    ioName: { type: GraphQLString },
+    ioRank: { type: GraphQLString },
+    briefFacts: { type: GraphQLString },
+
+    // accused table
+    accusedCode: { type: GraphQLString },
+    type: { type: GraphQLString },
+    seqNum: { type: GraphQLString },
+    isCCL: { type: GraphQLBoolean },
+    beard: { type: GraphQLString },
+    build: { type: GraphQLString },
+    color: { type: GraphQLString },
+    ear: { type: GraphQLString },
+    eyes: { type: GraphQLString },
+    face: { type: GraphQLString },
+    hair: { type: GraphQLString },
+    height: { type: GraphQLString },
+    leucoderma: { type: GraphQLString },
+    mole: { type: GraphQLString },
+    mustache: { type: GraphQLString },
+    nose: { type: GraphQLString },
+    teeth: { type: GraphQLString },
+
+    // brief_facts_accused table
+    accusedType: { type: GraphQLString },
+    accusedStatus: { type: GraphQLString },
+
+    // heirarchy table
+    psName: { type: GraphQLString },
+    circleCode: { type: GraphQLString },
+    circleName: { type: GraphQLString },
+    sdpoCode: { type: GraphQLString },
+    sdpoName: { type: GraphQLString },
+    subZoneCode: { type: GraphQLString },
+    subZoneName: { type: GraphQLString },
+    distCode: { type: GraphQLString },
+    distName: { type: GraphQLString },
+    rangeCode: { type: GraphQLString },
+    rangeName: { type: GraphQLString },
+    zoneCode: { type: GraphQLString },
+    zoneName: { type: GraphQLString },
+    adgCode: { type: GraphQLString },
+    adgName: { type: GraphQLString },
+
+    // person table
+    name: { type: GraphQLString },
+    surname: { type: GraphQLString },
+    alias: { type: GraphQLString },
+    fullName: { type: GraphQLString },
+    relationType: { type: GraphQLString },
+    relativeName: { type: GraphQLString },
+    gender: { type: GraphQLString },
+    isDied: { type: GraphQLBoolean },
+    dateOfBirth: { type: GraphQLString },
+    age: { type: GraphQLString },
+    occupation: { type: GraphQLString },
+    educationQualification: { type: GraphQLString },
+    caste: { type: GraphQLString },
+    subCaste: { type: GraphQLString },
+    religion: { type: GraphQLString },
+    nationality: { type: GraphQLString },
+    domicile: { type: GraphQLString },
+    designation: { type: GraphQLString },
+    placeOfWork: { type: GraphQLString },
+    presentHouseNo: { type: GraphQLString },
+    presentStreetRoadNo: { type: GraphQLString },
+    presentWardColony: { type: GraphQLString },
+    presentLandmarkMilestone: { type: GraphQLString },
+    presentLocalityVillage: { type: GraphQLString },
+    presentAreaMandal: { type: GraphQLString },
+    presentDistrict: { type: GraphQLString },
+    presentStateUt: { type: GraphQLString },
+    presentCountry: { type: GraphQLString },
+    presentResidencyType: { type: GraphQLString },
+    presentPinCode: { type: GraphQLString },
+    presentJurisdictionPs: { type: GraphQLString },
+    presentAddress: { type: GraphQLString },
+    permanentHouseNo: { type: GraphQLString },
+    permanentStreetRoadNo: { type: GraphQLString },
+    permanentWardColony: { type: GraphQLString },
+    permanentLandmarkMilestone: { type: GraphQLString },
+    permanentLocalityVillage: { type: GraphQLString },
+    permanentAreaMandal: { type: GraphQLString },
+    permanentDistrict: { type: GraphQLString },
+    permanentStateUt: { type: GraphQLString },
+    permanentCountry: { type: GraphQLString },
+    permanentResidencyType: { type: GraphQLString },
+    permanentPinCode: { type: GraphQLString },
+    permanentJurisdictionPs: { type: GraphQLString },
+    permanentAddress: { type: GraphQLString },
+    phoneNumber: { type: GraphQLString },
+    countryCode: { type: GraphQLString },
+    emailId: { type: GraphQLString },
+  }),
+});
+
+export const AdvancedSearchType = new GraphQLObjectType({
+  name: 'AdvancedSearchType',
+  fields: () => ({
+    nodes: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AdvancedSearchResultType))) },
+    pageInfo: { type: new GraphQLNonNull(PaginationType) },
+  }),
+});
+
+export const AdvancedSearchAutocompleteResultType = new GraphQLObjectType({
+  name: 'AdvancedSearchAutocompleteResultType',
+  fields: () => ({
+    field: { type: new GraphQLNonNull(AdvancedSearchColumnEnumType) },
+    value: { type: new GraphQLNonNull(GraphQLString) },
+  }),
+});

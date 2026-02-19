@@ -1,0 +1,14 @@
+{
+  "tabWidth": 2,
+  "trailingComma": "es5",
+  "singleQuote": true,
+  "printWidth": 120,
+  "arrowParens": "avoid",
+  "importOrder": ["^datasources/(.*)$", "^interfaces/(.*)$", "^schema/(.*)$", "^utils/(.*)$", "^[./]"],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true,
+  "editor.formatOnSave": true,
+  "[prisma]": {
+    "editor.defaultFormatter": "Prisma.prisma"
+  }
+}
