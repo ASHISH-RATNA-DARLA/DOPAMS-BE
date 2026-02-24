@@ -1,39 +1,58 @@
-# Ignore Mac system files
-.DS_store
+############################
+# OS Files
+############################
+.DS_Store
+Thumbs.db
 
-# Ignore all .terraform files
-.terraform/**
+############################
+# Terraform
+############################
+.terraform/
+*.tfstate
+*.tfstate.backup
 
-# Ignore node_modules folder
-node_modules
+############################
+# Node
+############################
+node_modules/
 .node_modules-*
 
-# Ignore build files
-build
+############################
+# Build Output
+############################
+build/
+dist/
 
-# Ignore lambda-functions/archive/*.zip files
+############################
+# Lambda Archives
+############################
 */lambda-functions/archive/*.zip
 
-# Ignore files from IntelliJ IDE
+############################
+# IDE
+############################
 .idea/
-
-# Ignore files from reports
-reports/
-
-# Ignore Environment Files
-.env
-.env-dev
-.env-stage
-.env-prod
-
-# Ignore Build Folder
-build/*
-
-# Ignore logs
-logs/*
-
-# Ignore VScode settings
 .vscode/
 
-# Ignore yarn.lock
+############################
+# Reports
+############################
+reports/
+
+############################
+# Logs
+############################
+logs/
+*.log
+
+############################
+# Environment Files
+############################
+.env
+.env.*
+!.env.example
+
+############################
+# Lock Files (Optional)
+############################
 yarn.lock

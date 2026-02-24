@@ -345,11 +345,11 @@ SELECT
         ) = ''::text
       )
     ) THEN 'Unknown'::text
-    ELSE TRIM(
+    ELSE INITCAP(TRIM(
       BOTH
       FROM
         bfa.accused_type
-    )
+    ))
   END AS "accusedType",
   NULLIF(
     TRIM(

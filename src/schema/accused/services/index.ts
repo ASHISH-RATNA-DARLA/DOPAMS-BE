@@ -333,46 +333,15 @@ export async function getAccusedStatistics(filters: AccusedFilterInput = {}) {
     ),
     prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
       `
-        SELECT label, count
-        FROM (
-          SELECT 
-            CASE
-              WHEN LOWER("accusedType") = 'supplier' THEN 'Supplier'
-              WHEN LOWER("accusedType") = 'manufacturer' THEN 'Manufacturer'
-              WHEN LOWER("accusedType") = 'processor' THEN 'Transporter'
-              WHEN LOWER("accusedType") = 'peddler' THEN 'Peddler'
-              WHEN LOWER("accusedType") = 'organizer_kingpin' THEN 'Organizer'
-              WHEN LOWER("accusedType") = 'consumer' THEN 'Consumer'
-              WHEN LOWER("accusedType") = 'financier' THEN 'Financier'
-              ELSE 'Others'
-            END AS label, 
-            COUNT(*)::int AS count
-          FROM accuseds_mv
-          ${where}
-          GROUP BY 
-            CASE
-              WHEN LOWER("accusedType") = 'supplier' THEN 'Supplier'
-              WHEN LOWER("accusedType") = 'manufacturer' THEN 'Manufacturer'
-              WHEN LOWER("accusedType") = 'processor' THEN 'Transporter'
-              WHEN LOWER("accusedType") = 'peddler' THEN 'Peddler'
-              WHEN LOWER("accusedType") = 'organizer_kingpin' THEN 'Organizer'
-              WHEN LOWER("accusedType") = 'consumer' THEN 'Consumer'
-              WHEN LOWER("accusedType") = 'financier' THEN 'Financier'
-              ELSE 'Others'
-            END
-        ) grouped
-        ORDER BY 
-          CASE label
-            WHEN 'Supplier' THEN 1
-            WHEN 'Manufacturer' THEN 2
-            WHEN 'Transporter' THEN 3
-            WHEN 'Peddler' THEN 4
-            WHEN 'Organizer' THEN 5
-            WHEN 'Consumer' THEN 6
-            WHEN 'Financier' THEN 7
-            WHEN 'Others' THEN 8
-            ELSE 9
-          END;
+        SELECT
+          "accusedType" AS label,
+          COUNT(*)::int AS count
+        FROM accuseds_mv
+        ${where}
+        GROUP BY "accusedType"
+        ORDER BY
+          CASE WHEN "accusedType" = 'Unknown' THEN 1 ELSE 0 END,
+          count DESC;
       `,
       ...params
     ),
