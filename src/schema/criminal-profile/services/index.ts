@@ -1,4 +1,4 @@
-import { CriminalProfiles, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from 'datasources/prisma';
 import { FileUpload } from 'graphql-upload-ts';
 import { CriminalProfileFilterInput } from 'interfaces/criminal-profile';
@@ -30,12 +30,9 @@ function buildPageInfo(page: number, limit: number, total: BigInt): PageNumberPa
   };
 }
 
-function buildSorting(
-  sortKey: keyof Prisma.CriminalProfilesOrderByWithRelationInput = 'noOfCrimes',
-  sortOrder: Prisma.SortOrder = 'desc'
-) {
+function buildSorting(sortKey: string = 'noOfCrimes', sortOrder: Prisma.SortOrder = 'desc') {
   const safeSortOrder = sortOrder.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
-  return `ORDER BY "${sortKey}" ${safeSortOrder} NULLS LAST`;
+  return `ORDER BY "${String(sortKey)}" ${safeSortOrder} NULLS LAST`;
 }
 
 /**
@@ -277,7 +274,7 @@ export function buildFilters(filters: CriminalProfileFilterInput = {}) {
 export async function getCriminalProfiles(
   page: number = 1,
   limit: number = 10,
-  sortKey: keyof Prisma.CriminalProfilesOrderByWithRelationInput = 'noOfCrimes',
+  sortKey: string = 'noOfCrimes',
   sortOrder: Prisma.SortOrder = 'desc',
   filters: CriminalProfileFilterInput = {}
 ) {

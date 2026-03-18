@@ -1,4 +1,4 @@
-import { Accuseds, Prisma } from '@prisma/client';
+import { Accused, Prisma } from '@prisma/client';
 import { prisma } from 'datasources/prisma';
 
 import { AccusedFilterInput } from 'interfaces/accused';
@@ -30,11 +30,11 @@ function buildPageInfo(page: number, limit: number, total: BigInt): PageNumberPa
 }
 
 function buildSorting(
-  sortKey: keyof Prisma.AccusedsOrderByWithRelationInput = 'crimeRegDate',
+  sortKey: keyof Prisma.AccusedOrderByWithRelationInput = 'dateCreated',
   sortOrder: Prisma.SortOrder = 'desc'
 ) {
   const safeSortOrder = sortOrder.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
-  return `ORDER BY "${sortKey}" ${safeSortOrder} NULLS LAST`;
+  return `ORDER BY "${String(sortKey)}" ${safeSortOrder} NULLS LAST`;
 }
 
 export function buildFilters(filters: AccusedFilterInput = {}) {
@@ -218,7 +218,7 @@ export function buildFilters(filters: AccusedFilterInput = {}) {
 }
 
 export async function getAccused(id: string) {
-  const result = await prisma.$queryRawUnsafe<Accuseds[]>(`SELECT * FROM accuseds_mv WHERE id = $1 LIMIT 1;`, id);
+  const result = await prisma.$queryRawUnsafe<Accused[]>(`SELECT * FROM accuseds_mv WHERE id = $1 LIMIT 1;`, id);
   const accused = result[0];
 
   if (!accused) throw new ResourceNotFoundException('Accused Not Found');
@@ -248,7 +248,7 @@ export async function getAccused(id: string) {
 export async function getAccuseds(
   page: number = 1,
   limit: number = 100,
-  sortKey: keyof Prisma.AccusedsOrderByWithRelationInput = 'crimeRegDate',
+  sortKey: keyof Prisma.AccusedOrderByWithRelationInput = 'dateCreated',
   sortOrder: Prisma.SortOrder = 'desc',
   filters: AccusedFilterInput = {}
 ) {
@@ -257,7 +257,7 @@ export async function getAccuseds(
   const { whereClause, params } = buildFilters(filters);
 
   const [nodes, totalCount] = await Promise.all([
-    prisma.$queryRawUnsafe<Accuseds[]>(
+    prisma.$queryRawUnsafe<Accused[]>(
       `SELECT * from accuseds_mv ${whereClause} ${sortClause} ${paginationClause};`,
       ...params
     ),

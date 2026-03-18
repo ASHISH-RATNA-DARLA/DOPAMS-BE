@@ -24,7 +24,6 @@ import {
   ShelterType,
   SimDetailsType,
   TypesOfDrugsType,
-  FamilyMembersType,
 } from 'schema/firs/interrogation_report';
 
 const CrimeChargesheetActType = new GraphQLObjectType({

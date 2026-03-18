@@ -14,7 +14,6 @@ export async function getCriminalNetwork(personId: string) {
           accuseds: {
             include: {
               person: true,
-              briefFactsAccused: true,
             },
           },
         },
@@ -154,15 +153,14 @@ export async function getNetwork(userId: string) {
       crime: {
         include: {
           hierarchy: true,
+          briefFactsAccused: true,
           accuseds: {
             include: {
               person: true,
-              briefFactsAccused: true,
             },
           },
         },
       },
-      briefFactsAccused: true,
     },
   });
 
@@ -239,7 +237,8 @@ export async function getNetwork(userId: string) {
         });
       }
 
-      const relation = coAccused.briefFactsAccused?.type === 'Accused' ? 'committed' : 'accomplice';
+      const briefFacts = crime.briefFactsAccused?.find(b => b.personId === coAccused.personId);
+      const relation = briefFacts?.type === 'Accused' ? 'committed' : 'accomplice';
       edges.push({
         id: `e${edgeCounter++}`,
         source: personId,

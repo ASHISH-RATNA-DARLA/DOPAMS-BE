@@ -409,10 +409,10 @@ async function getFallbackNetwork(accusedId: string): Promise<NetworkData> {
       crime: {
         include: {
           hierarchy: true,
+          briefFactsAccused: true,
           accuseds: {
             include: {
               person: true,
-              briefFactsAccused: true,
             },
           },
         },
@@ -452,10 +452,10 @@ async function getFallbackNetwork(accusedId: string): Promise<NetworkData> {
       crime: {
         include: {
           hierarchy: true,
+          briefFactsAccused: true,
           accuseds: {
             include: {
               person: true,
-              briefFactsAccused: true,
             },
           },
         },
