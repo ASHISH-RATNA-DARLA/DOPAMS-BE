@@ -10,80 +10,82 @@ datasource db {
 }
 
 model Crimes {
-  id                 String    @id @map("crime_id") @db.VarChar(50)
-  crimeNum           String    @map("fir_num") @db.VarChar(50)
-  firRegNum          String    @unique @map("fir_reg_num") @db.VarChar(50)
-  firType            String?   @map("fir_type") @db.VarChar(50)
-  sections           String?   @map("acts_sections")
-  firDate            DateTime? @map("fir_date") @db.Timestamp(6)
-  caseStatus         String?   @map("case_status") @db.VarChar(100)
-  majorHead          String?   @map("major_head") @db.VarChar(100)
-  minorHead          String?   @map("minor_head") @db.VarChar(255)
-  crimeType          String?   @map("crime_type") @db.VarChar(100)
-  ioName             String?   @map("io_name") @db.VarChar(255)
-  ioRank             String?   @map("io_rank") @db.VarChar(100)
-  briefFacts         String?   @map("brief_facts")
-  caseClassification String?   @map("class_classification") @db.VarChar(50)
-  firCopy            String?   @map("fir_copy") @db.VarChar(50)
-  dateCreated        DateTime? @map("date_created") @db.Timestamp(6)
-  dateModified       DateTime? @map("date_modified") @db.Timestamp(6)
-
+  id                       String                       @id @map("crime_id") @db.VarChar(50)
   psCode                   String                       @map("ps_code") @db.VarChar(20)
-  hierarchy                Hierarchy                    @relation(fields: [psCode], references: [psCode], onUpdate: NoAction)
+  crimeNum                 String                       @map("fir_num") @db.VarChar(50)
+  firRegNum                String                       @unique @map("fir_reg_num") @db.VarChar(50)
+  firType                  String?                      @map("fir_type") @db.VarChar(50)
+  sections                 String?                      @map("acts_sections")
+  firDate                  DateTime?                    @map("fir_date") @db.Timestamp(6)
+  caseStatus               String?                      @map("case_status") @db.VarChar(100)
+  majorHead                String?                      @map("major_head") @db.VarChar(100)
+  minorHead                String?                      @map("minor_head") @db.VarChar(255)
+  crimeType                String?                      @map("crime_type") @db.VarChar(100)
+  ioName                   String?                      @map("io_name") @db.VarChar(255)
+  ioRank                   String?                      @map("io_rank") @db.VarChar(100)
+  briefFacts               String?                      @map("brief_facts")
+  dateCreated              DateTime?                    @map("date_created") @db.Timestamp(6)
+  dateModified             DateTime?                    @map("date_modified") @db.Timestamp(6)
+  caseClassification       String?                      @map("class_classification") @db.VarChar(50)
+  firCopy                  String?                      @map("fir_copy") @db.VarChar(50)
+  additional_json_data     Json?
   accuseds                 Accused[]
   arrests                  Arrest[]
   briefFactsAccused        BriefFactsAccused[]
   briefFactsCrimeSummaries brief_facts_crime_summaries?
   briefFactsDrugs          BriefFactsDrug[]
-  properties               Properties[]
-  moSeizures               MoSeizure[]
-  chargesheets             Chargesheet[]
   chargeSheetUpdates       ChargeSheetUpdate[]
+  chargesheets             Chargesheet[]
+  hierarchy                Hierarchy                    @relation(fields: [psCode], references: [psCode], onUpdate: NoAction)
   disposal                 Disposal[]
-  interrogationReports     InterrogationReport[]
-  oldInterragationReports  OldInterragationReport[]
   fslCaseProperty          FslCaseProperty[]
+  interrogationReports     InterrogationReport[]
+  moSeizures               MoSeizure[]
+  oldInterragationReports  OldInterragationReport[]
+  properties               Properties[]
 
   @@index([caseStatus], map: "idx_crimes_case_status")
-  @@index([crimeType], map: "idx_crimes_crime_type")
   @@index([psCode], map: "idx_crimes_ps_code")
   @@index([firDate], map: "idx_crimes_fir_date")
   @@index([crimeNum], map: "idx_crimes_fir_num")
-  @@index([firRegNum], map: "idx_crimes_fir_reg_num")
+  @@index([dateCreated(sort: Desc), dateModified(sort: Desc)], map: "idx_crimes_dates")
+  @@index([sections(ops: raw("gin_trgm_ops"))], map: "trgm_idx_crimes_acts_sections", type: Gin)
   @@map("crimes")
 }
 
 model Accused {
-  id           String    @id @map("accused_id") @db.VarChar(50)
-  code         String    @map("accused_code") @db.VarChar(20)
-  type         String?   @default("Accused") @db.VarChar(50)
-  seqNum       String?   @unique @map("seq_num") @db.VarChar(50)
-  isCCL        Boolean?  @default(false) @map("is_ccl")
-  beard        String?   @db.VarChar(100)
-  build        String?   @db.VarChar(100)
-  color        String?   @db.VarChar(100)
-  ear          String?   @db.VarChar(100)
-  eyes         String?   @db.VarChar(100)
-  face         String?   @db.VarChar(100)
-  hair         String?   @db.VarChar(100)
-  height       String?   @db.VarChar(100)
-  leucoderma   String?   @db.VarChar(100)
-  mole         String?   @db.VarChar(100)
-  mustache     String?   @db.VarChar(100)
-  nose         String?   @db.VarChar(100)
-  teeth        String?   @db.VarChar(100)
-  dateCreated  DateTime? @map("date_created") @db.Timestamp(6)
-  dateModified DateTime? @map("date_modified") @db.Timestamp(6)
-
-  crimeId           String             @map("crime_id") @db.VarChar(50)
-  crime             Crimes             @relation(fields: [crimeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  personId          String?            @map("person_id") @db.VarChar(50)
-  person            Persons?           @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  briefFactsAccused BriefFactsAccused?
+  id             String    @id @map("accused_id") @db.VarChar(50)
+  crimeId        String    @map("crime_id") @db.VarChar(50)
+  personId       String?   @map("person_id") @db.VarChar(50)
+  code           String    @map("accused_code") @db.VarChar(20)
+  type           String?   @default("Accused") @db.VarChar(50)
+  seqNum         String?   @unique @map("seq_num") @db.VarChar(50)
+  isCCL          Boolean?  @default(false) @map("is_ccl")
+  beard          String?   @db.VarChar(100)
+  build          String?   @db.VarChar(100)
+  color          String?   @db.VarChar(100)
+  ear            String?   @db.VarChar(100)
+  eyes           String?   @db.VarChar(100)
+  face           String?   @db.VarChar(100)
+  hair           String?   @db.VarChar(100)
+  height         String?   @db.VarChar(100)
+  leucoderma     String?   @db.VarChar(100)
+  mole           String?   @db.VarChar(100)
+  mustache       String?   @db.VarChar(100)
+  nose           String?   @db.VarChar(100)
+  teeth          String?   @db.VarChar(100)
+  dateCreated    DateTime? @map("date_created") @db.Timestamp(6)
+  dateModified   DateTime? @map("date_modified") @db.Timestamp(6)
+  accused_status String?
+  crime          Crimes    @relation(fields: [crimeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  person         Persons?  @relation(fields: [personId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([crimeId], map: "idx_accused_crime")
   @@index([personId], map: "idx_accused_person")
   @@index([code], map: "idx_accused_code")
+  @@index([crimeId], map: "idx_accused_crime_id")
+  @@index([crimeId, personId], map: "idx_accused_crime_person")
+  @@index([accused_status], map: "idx_accused_status")
   @@map("accused")
 }
 
@@ -106,13 +108,8 @@ model Hierarchy {
   adgName      String?   @map("adg_name") @db.VarChar(255)
   dateCreated  DateTime? @map("date_created") @db.Timestamp(6)
   dateModified DateTime? @map("date_modified") @db.Timestamp(6)
+  crimes       Crimes[]
 
-  crimes Crimes[]
-
-  @@index([psName], map: "idx_hierarchy_ps_name")
-  @@index([distCode], map: "idx_hierarchy_dist_code")
-  @@index([rangeCode], map: "idx_hierarchy_range_code")
-  @@index([zoneCode], map: "idx_hierarchy_zone_code")
   @@map("hierarchy")
 }
 
@@ -122,7 +119,6 @@ model Persons {
   surname                    String?   @map("surname") @db.VarChar(255)
   alias                      String?   @map("alias") @db.VarChar(255)
   fullName                   String?   @map("full_name") @db.VarChar(500)
-  rawFullName                String?   @map("raw_full_name") @db.VarChar(500)
   relationType               String?   @map("relation_type") @db.VarChar(50)
   relativeName               String?   @map("relative_name") @db.VarChar(255)
   gender                     String?   @map("gender") @db.VarChar(20)
@@ -133,7 +129,6 @@ model Persons {
   educationQualification     String?   @map("education_qualification") @db.VarChar(255)
   caste                      String?   @map("caste") @db.VarChar(100)
   subCaste                   String?   @map("sub_caste") @db.VarChar(100)
-  domicile                   String?   @map("domicile_classification") @db.VarChar(50)
   religion                   String?   @map("religion") @db.VarChar(100)
   nationality                String?   @map("nationality") @db.VarChar(100)
   designation                String?   @map("designation") @db.VarChar(255)
@@ -167,53 +162,52 @@ model Persons {
   emailId                    String?   @map("email_id") @db.VarChar(255)
   dateCreated                DateTime? @map("date_created") @db.Timestamp(6)
   dateModified               DateTime? @map("date_modified") @db.Timestamp(6)
-
-  accusedIn Accused[]
-  arrests   Arrest[]
+  domicile                   String?   @map("domicile_classification") @db.VarChar(50)
+  rawFullName                String?   @map("raw_full_name") @db.VarChar(500)
+  accusedIn                  Accused[]
+  arrests                    Arrest[]
 
   @@index([name], map: "idx_persons_name")
   @@index([fullName], map: "idx_persons_full_name")
   @@index([phoneNumber], map: "idx_persons_phone")
   @@index([presentDistrict], map: "idx_persons_present_district")
-  @@index([presentStateUT], map: "idx_persons_present_state")
+  @@index([emailId], map: "idx_persons_email")
+  @@index([id], map: "idx_persons_person_id")
+  @@index([alias(ops: raw("gin_trgm_ops"))], map: "trgm_idx_persons_alias", type: Gin)
+  @@index([fullName(ops: raw("gin_trgm_ops"))], map: "trgm_idx_persons_full_name", type: Gin)
   @@map("persons")
 }
 
 model Properties {
   id                   String    @id @map("property_id") @db.VarChar(50)
+  crimeId              String    @map("crime_id") @db.VarChar(50)
   casePropertyId       String?   @map("case_property_id") @db.VarChar(50)
   status               String?   @map("property_status") @db.VarChar(100)
-  category             String?   @map("category") @db.VarChar(100)
-  nature               String?   @map("nature") @db.VarChar(255)
-  belongs              String?   @map("belongs") @db.VarChar(100)
   recoveredFrom        String?   @map("recovered_from") @db.VarChar(255)
   placeOfRecovery      String?   @map("place_of_recovery")
   dateOfSeizure        DateTime? @map("date_of_seizure") @db.Timestamp(6)
+  nature               String?   @map("nature") @db.VarChar(255)
+  belongs              String?   @map("belongs") @db.VarChar(100)
   estimateValue        Decimal?  @default(0) @map("estimate_value") @db.Decimal(15, 2)
   recoveredValue       Decimal?  @default(0) @map("recovered_value") @db.Decimal(15, 2)
   particularOfProperty String?   @map("particular_of_property")
+  category             String?   @map("category") @db.VarChar(100)
   additionalDetails    Json?     @map("additional_details")
   media                Json?     @default("[]") @map("media")
   dateCreated          DateTime? @map("date_created") @db.Timestamp(6)
   dateModified         DateTime? @map("date_modified") @db.Timestamp(6)
+  crime                Crimes    @relation(fields: [crimeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  crimeId String @map("crime_id") @db.VarChar(50)
-  crime   Crimes @relation(fields: [crimeId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-
-  @@index([belongs], map: "idx_properties_belongs")
-  @@index([casePropertyId], map: "idx_properties_case_property_id")
-  @@index([category], map: "idx_properties_category")
   @@index([crimeId], map: "idx_properties_crime_id")
-  @@index([dateCreated], map: "idx_properties_date_created")
   @@index([dateOfSeizure], map: "idx_properties_date_seizure")
-  @@index([nature], map: "idx_properties_nature")
-  @@index([additionalDetails], map: "idx_properties_additional_details", type: Gin)
-  @@index([status], map: "idx_properties_status")
+  @@index([additionalDetails], map: "idx_properties_additional_details_gin", type: Gin)
   @@map("properties")
 }
 
 model BriefFactsAccused {
   id                  String    @id @map("bf_accused_id") @db.Uuid
+  crimeId             String    @map("crime_id") @db.VarChar(50)
+  accusedId           String?   @map("accused_id") @db.VarChar(50)
   personId            String?   @map("person_id") @db.VarChar(50)
   personCode          String?   @map("person_code") @db.VarChar(50)
   seqNum              String?   @map("seq_num") @db.VarChar(50)
@@ -227,26 +221,22 @@ model BriefFactsAccused {
   roleInCrime         String?   @map("role_in_crime")
   keyDetails          String?   @map("key_details")
   type                String?   @map("accused_type") @db.VarChar(40)
-  status              String?   @map("status") @db.VarChar(40)
+  status              String?   @map("status")
   isCCL               Boolean?  @map("is_ccl")
-  existing_accused    Boolean?  @default(false)
   sourcePersonFields  Json?     @map("source_person_fields")
   sourceAccusedFields Json?     @map("source_accused_fields")
   sourceSummaryFields Json?     @map("source_summary_fields")
   dateCreated         DateTime? @default(now()) @map("date_created") @db.Timestamp(6)
   dateModified        DateTime? @default(now()) @map("date_modified") @db.Timestamp(6)
+  existing_accused    Boolean?  @default(false)
+  crimes              Crimes    @relation(fields: [crimeId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_bf_accused_crime")
 
-  crimeId   String   @map("crime_id") @db.VarChar(50)
-  crimes    Crimes   @relation(fields: [crimeId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_bf_accused_crime")
-  accusedId String?  @unique @map("accused_id") @db.VarChar(50)
-  accused   Accused? @relation(fields: [accusedId], references: [id])
-
-  @@unique([crimeId, accusedId], map: "idx_bf_accused_crime_accused")
   @@unique([id, accusedId], map: "uq_bf_accused_id_accused_id")
   @@index([crimeId], map: "idx_brief_facts_accused_crime_id")
   @@index([crimeId, personId], map: "idx_brief_facts_accused_crime_person")
-  @@index([personId], map: "idx_brief_facts_accused_person_id")
-  @@index([type], map: "idx_brief_facts_accused_type")
+  @@index([accusedId], map: "idx_bf_accused_accused_id")
+  @@index([crimeId], map: "idx_bf_accused_crime_id")
+  @@index([personId], map: "idx_bf_accused_person_id")
   @@map("brief_facts_accused")
 }
 
@@ -260,69 +250,31 @@ model brief_facts_crime_summaries {
   date_created            DateTime? @default(now()) @db.Timestamp(6)
   date_modified           DateTime? @default(now()) @db.Timestamp(6)
   crimes                  Crimes    @relation(fields: [crime_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_summaries_crime")
-
-  @@index([model_name], map: "idx_summaries_model")
-  @@index([crime_id], map: "idx_brief_facts_summaries_crime_id")
-}
-
-model BriefFactsDrugs {
-  id                 Int       @id @default(autoincrement())
-  drugName           String?   @map("drug_name") @db.VarChar(255)
-  scientificName     String?   @map("scientific_name")
-  brandName          String?   @map("brand_name") @db.VarChar(255)
-  drugCategory       String?   @map("drug_category") @db.VarChar(100)
-  drugSchedule       String?   @map("drug_schedule") @db.VarChar(10)
-  totalQuantity      String?   @map("total_quantity")
-  quantityNumeric    Decimal?  @map("quantity_numeric") @db.Decimal(20, 10)
-  quantityUnit       String?   @map("quantity_unit") @db.VarChar(50)
-  numberOfPackets    String?   @map("number_of_packets") @db.VarChar(255)
-  weightBreakdown    String?   @map("weight_breakdown")
-  packagingDetails   String?   @map("packaging_details")
-  sourceLocation     String?   @map("source_location")
-  destination        String?   @map("destination")
-  transportMethod    String?   @map("transport_method")
-  supplyChain        String?   @map("supply_chain")
-  seizureLocation    String?   @map("seizure_location")
-  seizureTime        String?   @map("seizure_time")
-  seizureWorth       Int?      @map("seizure_worth")
-  seizureMethod      String?   @map("seizure_method")
-  seizureOfficer     String?   @map("seizure_officer")
-  commercialQuantity String?   @map("commercial_quantity")
-  isCommercial       Boolean?  @map("is_commercial")
-  streetValue        String?   @map("street_value")
-  streetValueNumeric Decimal?  @map("street_value_numeric") @db.Decimal(20, 2)
-  purity             Decimal?  @map("purity") @db.Decimal(10, 5)
-  dateCreated        DateTime? @map("date_created") @db.Timestamp(6)
-  dateModified       DateTime? @map("date_modified") @db.Timestamp(6)
-
-  crimeId String? @map("crime_id") @db.VarChar(255)
-
-  @@index([crimeId], map: "idx_brief_facts_drugs_crime_id")
-  @@index([drugName], map: "idx_brief_facts_drugs_drug_name")
-  @@map("brief_facts_drugs")
 }
 
 model BriefFactsDrug {
-  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  crime_id                 String?   @db.VarChar
-  drug_name                String?   @db.VarChar(255)
-  quantity_numeric         Decimal?  @db.Decimal
-  quantity_unit            String?   @db.VarChar(50)
-  drug_form                String?   @db.VarChar(50)
-  packaging_details        String?
-  confidence_score         Int?
-  standardized_quantity_kg Decimal?  @db.Decimal
-  standardized_unit        String?   @default("Kg") @db.VarChar(20)
-  is_commercial            Boolean?  @default(false)
-  seizure_worth            Decimal?  @default(0.0) @db.Decimal
-  extraction_metadata      Json?
-  created_at               DateTime? @default(now()) @db.Timestamp(6)
-  standardized_weight_kg   Decimal?  @db.Decimal
-  standardized_volume_ml   Decimal?  @db.Decimal
-  standardized_count       Decimal?  @db.Decimal
-  primary_unit_type        String?   @db.VarChar(20)
-  crimes                   Crimes?   @relation(fields: [crime_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  crime_id            String    @db.VarChar(50)
+  raw_drug_name       String
+  raw_quantity        Decimal?  @db.Decimal(18, 6)
+  raw_unit            String?
+  primary_drug_name   String
+  drug_form           String?
+  weight_g            Decimal?  @db.Decimal(18, 6)
+  weight_kg           Decimal?  @db.Decimal(18, 6)
+  volume_ml           Decimal?  @db.Decimal(18, 6)
+  volume_l            Decimal?  @db.Decimal(18, 6)
+  count_total         Decimal?  @db.Decimal(18, 6)
+  confidence_score    Decimal?  @db.Decimal(3, 2)
+  extraction_metadata Json?
+  is_commercial       Boolean?  @default(false)
+  seizure_worth       Decimal?  @default(0.0) @db.Decimal
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime? @default(now()) @db.Timestamptz(6)
+  crimes              Crimes    @relation(fields: [crime_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@index([crime_id], map: "idx_bfd_crime_id")
+  @@index([primary_drug_name], map: "idx_bfd_primary_drug")
   @@map("brief_facts_drug")
 }
 
@@ -353,14 +305,6 @@ model PersonDeduplicationTracker {
   createdAt              DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt              DateTime? @default(now()) @map("updated_at") @db.Timestamp(6)
 
-  @@index([allAccusedIds], map: "idx_dedup_tracker_accused_ids", type: Gin)
-  @@index([canonicalPersonId], map: "idx_dedup_tracker_canonical_person")
-  @@index([crimeCount], map: "idx_dedup_tracker_crime_count")
-  @@index([crimeDetails], map: "idx_dedup_tracker_crime_details", type: Gin)
-  @@index([allCrimeIds], map: "idx_dedup_tracker_crime_ids", type: Gin)
-  @@index([personFingerprint], map: "idx_dedup_tracker_fingerprint")
-  @@index([allPersonIds], map: "idx_dedup_tracker_person_ids", type: Gin)
-  @@index([matchingTier], map: "idx_dedup_tracker_tier")
   @@map("person_deduplication_tracker")
 }
 
@@ -370,116 +314,103 @@ model User {
   password        String   @db.VarChar(255)
   role            Int      @default(0)
   status          Int      @default(1)
-  backgroundColor String?  @map("background_color") @db.VarChar(50)
   createdAt       DateTime @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+  backgroundColor String?  @map("background_color") @db.VarChar(50)
 
   @@map("user")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model InterrogationReport {
-  interrogationReportId              String    @id @map("interrogation_report_id") @db.VarChar(50)
-  physicalBeard                      String?   @map("physical_beard") @db.VarChar(100)
-  physicalBuild                      String?   @map("physical_build") @db.VarChar(100)
-  physicalBurnMarks                  String?   @map("physical_burn_marks") @db.VarChar(100)
-  physicalColor                      String?   @map("physical_color") @db.VarChar(100)
-  physicalDeformitiesOrPeculiarities String?   @map("physical_deformities_or_peculiarities") @db.VarChar(255)
-  physicalDeformities                String?   @map("physical_deformities") @db.VarChar(255)
-  physicalEar                        String?   @map("physical_ear") @db.VarChar(100)
-  physicalEyes                       String?   @map("physical_eyes") @db.VarChar(100)
-  physicalFace                       String?   @map("physical_face") @db.VarChar(100)
-  physicalHair                       String?   @map("physical_hair") @db.VarChar(100)
-  physicalHeight                     String?   @map("physical_height") @db.VarChar(100)
-  physicalIdentificationMarks        String?   @map("physical_identification_marks")
-  physicalLanguageOrDialect          String[]  @map("physical_language_or_dialect")
-  physicalLeucoderma                 String?   @map("physical_leucoderma") @db.VarChar(100)
-  physicalMole                       String?   @map("physical_mole") @db.VarChar(100)
-  physicalMustache                   String?   @map("physical_mustache") @db.VarChar(100)
-  physicalNose                       String?   @map("physical_nose") @db.VarChar(100)
-  physicalScar                       String?   @map("physical_scar") @db.VarChar(100)
-  physicalTattoo                     String?   @map("physical_tattoo") @db.VarChar(100)
-  physicalTeeth                      String?   @map("physical_teeth") @db.VarChar(100)
-  socioLivingStatus                  String?   @map("socio_living_status") @db.VarChar(100)
-  socioMaritalStatus                 String?   @map("socio_marital_status") @db.VarChar(100)
-  socioEducation                     String?   @map("socio_education") @db.VarChar(255)
-  socioOccupation                    String?   @map("socio_occupation") @db.VarChar(255)
-  socioIncomeGroup                   String?   @map("socio_income_group") @db.VarChar(255)
-  offenceTime                        String?   @map("offence_time") @db.VarChar(255)
-  otherOffenceTime                   String?   @map("other_offence_time") @db.VarChar(255)
-  shareOfAmountSpent                 String?   @map("share_of_amount_spent") @db.VarChar(255)
-  otherShareOfAmountSpent            String?   @map("other_share_of_amount_spent") @db.VarChar(255)
-  shareRemarks                       String?   @map("share_remarks")
-  isInJail                           Boolean?  @default(false) @map("is_in_jail")
-  fromWhereSentInJail                String?   @map("from_where_sent_in_jail")
-  inJailCrimeNum                     String?   @map("in_jail_crime_num") @db.VarChar(255)
-  inJailDistUnit                     String?   @map("in_jail_dist_unit") @db.VarChar(255)
-  isOnBail                           Boolean?  @default(false) @map("is_on_bail")
-  fromWhereSentOnBail                String?   @map("from_where_sent_on_bail")
-  onBailCrimeNum                     String?   @map("on_bail_crime_num") @db.VarChar(255)
-  dateOfBail                         DateTime? @map("date_of_bail") @db.Date
-  isAbsconding                       Boolean?  @default(false) @map("is_absconding")
-  wantedInPoliceStation              String?   @map("wanted_in_police_station") @db.VarChar(255)
-  abscondingCrimeNum                 String?   @map("absconding_crime_num") @db.VarChar(255)
-  isNormalLife                       Boolean?  @default(false) @map("is_normal_life")
-  ekingLivelihoodByLaborWork         String?   @map("eking_livelihood_by_labor_work")
-  isRehabilitated                    Boolean?  @default(false) @map("is_rehabilitated")
-  rehabilitationDetails              String?   @map("rehabilitation_details")
-  isDead                             Boolean?  @default(false) @map("is_dead")
-  deathDetails                       String?   @map("death_details")
-  isFacingTrial                      Boolean?  @default(false) @map("is_facing_trial")
-  facingTrialPsName                  String?   @map("facing_trial_ps_name") @db.VarChar(255)
-  facingTrialCrimeNum                String?   @map("facing_trial_crime_num") @db.VarChar(255)
-  otherRegularHabits                 String?   @map("other_regular_habits")
-  otherIndulgenceBeforeOffence       String?   @map("other_indulgence_before_offence")
-  timeSinceModusOperandi             String?   @map("time_since_modus_operandi")
-  dateCreated                        DateTime? @map("date_created") @db.Timestamp(6)
-  dateModified                       DateTime? @map("date_modified") @db.Timestamp(6)
-
-  crimeId                     String                        @map("crime_id") @db.VarChar(50)
-  crime                       Crimes                        @relation(fields: [crimeId], references: [id], onDelete: Cascade, map: "ir_crime_fkey")
-  personId                    String?                       @map("person_id") @db.VarChar(50)
-  irAssociateDetails          IrAssociateDetails[]
-  irConsumerDetails           IrConsumerDetails[]
-  irDefenceCounsel            IrDefenceCounsel[]
-  irDopamsLinks               IrDopamsLinks[]
-  irFamilyHistory             IrFamilyHistory[]
-  irFinancialHistory          IrFinancialHistory[]
-  irInterrogationReportRefs   IrInterrogationReportRefs[]
-  irLocalContacts             IrLocalContacts[]
-  irMedia                     IrMedia[]
-  irModusOperandi             IrModusOperandi[]
-  irPreviousOffencesConfessed IrPreviousOffencesConfessed[]
-  irRegularHabits             IrRegularHabits[]
-  irShelter                   IrShelter[]
-  irSimDetails                IrSimDetails[]
-  irTypesOfDrugs              IrTypesOfDrugs[]
+  interrogationReportId              String                        @id @map("interrogation_report_id") @db.VarChar(50)
+  crimeId                            String                        @map("crime_id") @db.VarChar(50)
+  personId                           String?                       @map("person_id") @db.VarChar(50)
+  physicalBeard                      String?                       @map("physical_beard") @db.VarChar(100)
+  physicalBuild                      String?                       @map("physical_build") @db.VarChar(100)
+  physicalBurnMarks                  String?                       @map("physical_burn_marks") @db.VarChar(100)
+  physicalColor                      String?                       @map("physical_color") @db.VarChar(100)
+  physicalDeformitiesOrPeculiarities String?                       @map("physical_deformities_or_peculiarities") @db.VarChar(255)
+  physicalDeformities                String?                       @map("physical_deformities") @db.VarChar(255)
+  physicalEar                        String?                       @map("physical_ear") @db.VarChar(100)
+  physicalEyes                       String?                       @map("physical_eyes") @db.VarChar(100)
+  physicalFace                       String?                       @map("physical_face") @db.VarChar(100)
+  physicalHair                       String?                       @map("physical_hair") @db.VarChar(100)
+  physicalHeight                     String?                       @map("physical_height") @db.VarChar(100)
+  physicalIdentificationMarks        String?                       @map("physical_identification_marks")
+  physicalLanguageOrDialect          String[]                      @map("physical_language_or_dialect")
+  physicalLeucoderma                 String?                       @map("physical_leucoderma") @db.VarChar(100)
+  physicalMole                       String?                       @map("physical_mole") @db.VarChar(100)
+  physicalMustache                   String?                       @map("physical_mustache") @db.VarChar(100)
+  physicalNose                       String?                       @map("physical_nose") @db.VarChar(100)
+  physicalScar                       String?                       @map("physical_scar") @db.VarChar(100)
+  physicalTattoo                     String?                       @map("physical_tattoo") @db.VarChar(100)
+  physicalTeeth                      String?                       @map("physical_teeth") @db.VarChar(100)
+  socioLivingStatus                  String?                       @map("socio_living_status") @db.VarChar(100)
+  socioMaritalStatus                 String?                       @map("socio_marital_status") @db.VarChar(100)
+  socioEducation                     String?                       @map("socio_education") @db.VarChar(255)
+  socioOccupation                    String?                       @map("socio_occupation") @db.VarChar(255)
+  socioIncomeGroup                   String?                       @map("socio_income_group") @db.VarChar(255)
+  offenceTime                        String?                       @map("offence_time") @db.VarChar(255)
+  otherOffenceTime                   String?                       @map("other_offence_time") @db.VarChar(255)
+  shareOfAmountSpent                 String?                       @map("share_of_amount_spent") @db.VarChar(255)
+  otherShareOfAmountSpent            String?                       @map("other_share_of_amount_spent") @db.VarChar(255)
+  shareRemarks                       String?                       @map("share_remarks")
+  isInJail                           Boolean?                      @default(false) @map("is_in_jail")
+  fromWhereSentInJail                String?                       @map("from_where_sent_in_jail")
+  inJailCrimeNum                     String?                       @map("in_jail_crime_num") @db.VarChar(255)
+  inJailDistUnit                     String?                       @map("in_jail_dist_unit") @db.VarChar(255)
+  isOnBail                           Boolean?                      @default(false) @map("is_on_bail")
+  fromWhereSentOnBail                String?                       @map("from_where_sent_on_bail")
+  onBailCrimeNum                     String?                       @map("on_bail_crime_num") @db.VarChar(255)
+  dateOfBail                         DateTime?                     @map("date_of_bail") @db.Date
+  isAbsconding                       Boolean?                      @default(false) @map("is_absconding")
+  wantedInPoliceStation              String?                       @map("wanted_in_police_station") @db.VarChar(255)
+  abscondingCrimeNum                 String?                       @map("absconding_crime_num") @db.VarChar(255)
+  isNormalLife                       Boolean?                      @default(false) @map("is_normal_life")
+  ekingLivelihoodByLaborWork         String?                       @map("eking_livelihood_by_labor_work")
+  isRehabilitated                    Boolean?                      @default(false) @map("is_rehabilitated")
+  rehabilitationDetails              String?                       @map("rehabilitation_details")
+  isDead                             Boolean?                      @default(false) @map("is_dead")
+  deathDetails                       String?                       @map("death_details")
+  isFacingTrial                      Boolean?                      @default(false) @map("is_facing_trial")
+  facingTrialPsName                  String?                       @map("facing_trial_ps_name") @db.VarChar(255)
+  facingTrialCrimeNum                String?                       @map("facing_trial_crime_num") @db.VarChar(255)
+  otherRegularHabits                 String?                       @map("other_regular_habits")
+  otherIndulgenceBeforeOffence       String?                       @map("other_indulgence_before_offence")
+  timeSinceModusOperandi             String?                       @map("time_since_modus_operandi")
+  dateCreated                        DateTime?                     @map("date_created") @db.Timestamp(6)
+  dateModified                       DateTime?                     @map("date_modified") @db.Timestamp(6)
+  crime                              Crimes                        @relation(fields: [crimeId], references: [id], onDelete: Cascade, map: "ir_crime_fkey")
+  irAssociateDetails                 IrAssociateDetails[]
+  irConsumerDetails                  IrConsumerDetails[]
+  irDefenceCounsel                   IrDefenceCounsel[]
+  irDopamsLinks                      IrDopamsLinks[]
+  irFamilyHistory                    IrFamilyHistory[]
+  irFinancialHistory                 IrFinancialHistory[]
+  irInterrogationReportRefs          IrInterrogationReportRefs[]
+  irLocalContacts                    IrLocalContacts[]
+  irMedia                            IrMedia[]
+  irModusOperandi                    IrModusOperandi[]
+  irPreviousOffencesConfessed        IrPreviousOffencesConfessed[]
+  irRegularHabits                    IrRegularHabits[]
+  irShelter                          IrShelter[]
+  irSimDetails                       IrSimDetails[]
+  irTypesOfDrugs                     IrTypesOfDrugs[]
 
   @@index([crimeId], map: "idx_ir_crime_id")
-  @@index([dateCreated], map: "idx_ir_date_created")
-  @@index([dateModified], map: "idx_ir_date_modified")
-  @@index([isAbsconding], map: "idx_ir_is_absconding")
-  @@index([isFacingTrial], map: "idx_ir_is_facing_trial")
   @@index([isInJail], map: "idx_ir_is_in_jail")
-  @@index([isOnBail], map: "idx_ir_is_on_bail")
   @@index([personId], map: "idx_ir_person_id")
-  @@index([physicalBeard], map: "idx_ir_physical_beard")
-  @@index([physicalColor], map: "idx_ir_physical_color")
-  @@index([physicalHeight], map: "idx_ir_physical_height")
-  @@index([socioEducation], map: "idx_ir_socio_education")
-  @@index([socioMaritalStatus], map: "idx_ir_socio_marital_status")
-  @@index([socioOccupation], map: "idx_ir_socio_occupation")
   @@map("interrogation_reports")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrAssociateDetails {
-  id       Int     @id @default(autoincrement())
-  gang     String? @map("gang") @db.VarChar(255)
-  relation String? @map("relation")
-
-  personId              String?             @map("person_id") @db.VarChar(50)
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
+  personId              String?             @map("person_id") @db.VarChar(50)
+  gang                  String?             @map("gang") @db.VarChar(255)
+  relation              String?             @map("relation")
   interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_associate_details_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_associate_details_ir")
@@ -488,16 +419,15 @@ model IrAssociateDetails {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrConsumerDetails {
-  id                      Int     @id @default(autoincrement())
-  placeOfConsumption      String? @map("place_of_consumption")
-  otherSources            String? @map("other_sources")
-  otherSourcesPhoneNo     String? @map("other_sources_phone_no") @db.VarChar(20)
-  aadharCardNumber        String? @map("aadhar_card_number") @db.VarChar(20)
-  aadharCardNumberPhoneNo String? @map("aadhar_card_number_phone_no") @db.VarChar(20)
-
-  interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
-  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_consumer_details_ir_fkey")
-  consumerId            String?             @map("consumer_person_id") @db.VarChar(50)
+  id                      Int                 @id @default(autoincrement())
+  interrogationReportId   String              @map("interrogation_report_id") @db.VarChar(50)
+  consumerId              String?             @map("consumer_person_id") @db.VarChar(50)
+  placeOfConsumption      String?             @map("place_of_consumption")
+  otherSources            String?             @map("other_sources")
+  otherSourcesPhoneNo     String?             @map("other_sources_phone_no") @db.VarChar(20)
+  aadharCardNumber        String?             @map("aadhar_card_number") @db.VarChar(20)
+  aadharCardNumberPhoneNo String?             @map("aadhar_card_number_phone_no") @db.VarChar(20)
+  interrogationReport     InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_consumer_details_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_consumer_details_ir")
   @@map("ir_consumer_details")
@@ -505,19 +435,18 @@ model IrConsumerDetails {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrDefenceCounsel {
-  id                    Int     @id @default(autoincrement())
-  distDivision          String? @map("dist_division") @db.VarChar(255)
-  psCode                String? @map("ps_code")
-  crimeNum              String? @map("crime_num")
-  lawSection            String? @map("law_section")
-  scCcNum               String? @map("sc_cc_num")
-  defenceCounselAddress String? @map("defence_counsel_address")
-  defenceCounselPhone   String? @map("defence_counsel_phone") @db.VarChar(20)
-  assistance            String? @map("assistance")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
-  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_defence_counsel_ir_fkey")
+  distDivision          String?             @map("dist_division") @db.VarChar(255)
+  psCode                String?             @map("ps_code")
+  crimeNum              String?             @map("crime_num")
+  lawSection            String?             @map("law_section")
+  scCcNum               String?             @map("sc_cc_num")
+  defenceCounselAddress String?             @map("defence_counsel_address")
+  defenceCounselPhone   String?             @map("defence_counsel_phone") @db.VarChar(20)
+  assistance            String?             @map("assistance")
   defenceCounselId      String?             @map("defence_counsel_person_id") @db.VarChar(50)
+  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_defence_counsel_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_defence_counsel_ir")
   @@map("ir_defence_counsel")
@@ -525,30 +454,27 @@ model IrDefenceCounsel {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrDopamsLinks {
-  id          Int      @id @default(autoincrement())
-  phoneNumber String?  @map("phone_number") @db.VarChar(20)
-  dopamsData  String[] @map("dopams_data")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
+  phoneNumber           String?             @map("phone_number") @db.VarChar(20)
+  dopamsData            String[]            @map("dopams_data")
   interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_dopams_links_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_dopams_links_ir")
-  @@index([phoneNumber], map: "idx_ir_dopams_links_phone")
   @@map("ir_dopams_links")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrFamilyHistory {
-  id                      Int      @id @default(autoincrement())
-  relation                String?  @map("relation")
-  familyMemberPeculiarity String?  @map("family_member_peculiarity")
-  criminalBackground      Boolean? @default(false) @map("criminal_background")
-  isAlive                 Boolean? @default(true) @map("is_alive")
-  familyStayTogether      Boolean? @default(true) @map("family_stay_together")
-
-  interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
-  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_family_history_ir_fkey")
-  personId              String?             @map("person_id") @db.VarChar(50)
+  id                      Int                 @id @default(autoincrement())
+  interrogationReportId   String              @map("interrogation_report_id") @db.VarChar(50)
+  personId                String?             @map("person_id") @db.VarChar(50)
+  relation                String?             @map("relation")
+  familyMemberPeculiarity String?             @map("family_member_peculiarity")
+  criminalBackground      Boolean?            @default(false) @map("criminal_background")
+  isAlive                 Boolean?            @default(true) @map("is_alive")
+  familyStayTogether      Boolean?            @default(true) @map("family_stay_together")
+  interrogationReport     InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_family_history_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_family_history_ir")
   @@index([personId], map: "idx_ir_family_history_person")
@@ -557,19 +483,18 @@ model IrFamilyHistory {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrFinancialHistory {
-  id                        Int     @id @default(autoincrement())
-  panNo                     String? @map("pan_no") @db.VarChar(50)
-  upiId                     String? @map("upi_id") @db.VarChar(255)
-  nameOfBank                String? @map("name_of_bank") @db.VarChar(255)
-  accountNumber             String? @map("account_number")
-  branchName                String? @map("branch_name") @db.VarChar(255)
-  ifscCode                  String? @map("ifsc_code") @db.VarChar(50)
-  immovablePropertyAcquired String? @map("immovable_property_acquired")
-  movablePropertyAcquired   String? @map("movable_property_acquired")
-
-  interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
-  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_financial_history_ir_fkey")
-  accountHolderId       String?             @map("account_holder_person_id") @db.VarChar(50)
+  id                        Int                 @id @default(autoincrement())
+  interrogationReportId     String              @map("interrogation_report_id") @db.VarChar(50)
+  accountHolderId           String?             @map("account_holder_person_id") @db.VarChar(50)
+  panNo                     String?             @map("pan_no") @db.VarChar(50)
+  upiId                     String?             @map("upi_id") @db.VarChar(255)
+  nameOfBank                String?             @map("name_of_bank") @db.VarChar(255)
+  accountNumber             String?             @map("account_number")
+  branchName                String?             @map("branch_name") @db.VarChar(255)
+  ifscCode                  String?             @map("ifsc_code") @db.VarChar(50)
+  immovablePropertyAcquired String?             @map("immovable_property_acquired")
+  movablePropertyAcquired   String?             @map("movable_property_acquired")
+  interrogationReport       InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_financial_history_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_financial_history_ir")
   @@map("ir_financial_history")
@@ -577,27 +502,24 @@ model IrFinancialHistory {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrInterrogationReportRefs {
-  id          Int    @id @default(autoincrement())
-  reportRefId String @map("report_ref_id")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
+  reportRefId           String              @map("report_ref_id")
   interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_interrogation_report_refs_ir_fkey")
 
   @@unique([interrogationReportId, reportRefId], map: "ir_interrogation_report_refs_unique")
-  @@index([interrogationReportId], map: "idx_ir_interrogation_report_refs_ir")
   @@map("ir_interrogation_report_refs")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrLocalContacts {
-  id             Int     @id @default(autoincrement())
-  town           String? @map("town") @db.VarChar(255)
-  address        String? @map("address")
-  jurisdictionPs String? @map("jurisdiction_ps")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
-  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_local_contacts_ir_fkey")
   personId              String?             @map("person_id") @db.VarChar(50)
+  town                  String?             @map("town") @db.VarChar(255)
+  address               String?             @map("address")
+  jurisdictionPs        String?             @map("jurisdiction_ps")
+  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_local_contacts_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_local_contacts_ir")
   @@map("ir_local_contacts")
@@ -605,10 +527,9 @@ model IrLocalContacts {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrMedia {
-  id      Int    @id @default(autoincrement())
-  mediaId String @map("media_id")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
+  mediaId               String              @map("media_id")
   interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_media_ir_fkey")
 
   @@unique([interrogationReportId, mediaId], map: "ir_media_unique")
@@ -618,12 +539,11 @@ model IrMedia {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrModusOperandi {
-  id            Int     @id @default(autoincrement())
-  crimeHead     String? @map("crime_head") @db.VarChar(255)
-  crimeSubHead  String? @map("crime_sub_head") @db.VarChar(255)
-  modusOperandi String? @map("modus_operandi")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
+  crimeHead             String?             @map("crime_head") @db.VarChar(255)
+  crimeSubHead          String?             @map("crime_sub_head") @db.VarChar(255)
+  modusOperandi         String?             @map("modus_operandi")
   interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_modus_operandi_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_modus_operandi_ir")
@@ -632,22 +552,21 @@ model IrModusOperandi {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrPreviousOffencesConfessed {
-  id                Int       @id @default(autoincrement())
-  arrestDate        DateTime? @map("arrest_date") @db.Date
-  arrestedBy        String?   @map("arrested_by") @db.VarChar(255)
-  arrestPlace       String?   @map("arrest_place")
-  crimeNum          String?   @map("crime_num")
-  distUnitDivision  String?   @map("dist_unit_division") @db.VarChar(255)
-  gangMember        String?   @map("gang_member") @db.VarChar(255)
-  interrogatedBy    String?   @map("interrogated_by") @db.VarChar(255)
-  lawSection        String?   @map("law_section") @db.VarChar(255)
-  othersIdentify    String?   @map("others_identify")
-  propertyRecovered String?   @map("property_recovered")
-  propertyStolen    String?   @map("property_stolen")
-  psCode            String?   @map("ps_code")
-  remarks           String?   @map("remarks")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
+  arrestDate            DateTime?           @map("arrest_date") @db.Date
+  arrestedBy            String?             @map("arrested_by") @db.VarChar(255)
+  arrestPlace           String?             @map("arrest_place")
+  crimeNum              String?             @map("crime_num")
+  distUnitDivision      String?             @map("dist_unit_division") @db.VarChar(255)
+  gangMember            String?             @map("gang_member") @db.VarChar(255)
+  interrogatedBy        String?             @map("interrogated_by") @db.VarChar(255)
+  lawSection            String?             @map("law_section") @db.VarChar(255)
+  othersIdentify        String?             @map("others_identify")
+  propertyRecovered     String?             @map("property_recovered")
+  propertyStolen        String?             @map("property_stolen")
+  psCode                String?             @map("ps_code")
+  remarks               String?             @map("remarks")
   interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_previous_offences_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_previous_offences_ir")
@@ -656,28 +575,25 @@ model IrPreviousOffencesConfessed {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrRegularHabits {
-  id    Int    @id @default(autoincrement())
-  habit String @map("habit") @db.VarChar(255)
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
+  habit                 String              @map("habit") @db.VarChar(255)
   interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_regular_habits_ir_fkey")
 
   @@unique([interrogationReportId, habit], map: "ir_regular_habits_unique")
   @@index([interrogationReportId], map: "idx_ir_regular_habits_ir")
-  @@index([habit], map: "idx_ir_regular_habits_habit")
   @@map("ir_regular_habits")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrShelter {
-  id                    Int     @id @default(autoincrement())
-  preparationOfOffence  String? @map("preparation_of_offence")
-  afterOffence          String? @map("after_offence")
-  regularResidency      String? @map("regular_residency") @db.VarChar(255)
-  remarks               String? @map("remarks")
-  otherRegularResidency String? @map("other_regular_residency")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
+  preparationOfOffence  String?             @map("preparation_of_offence")
+  afterOffence          String?             @map("after_offence")
+  regularResidency      String?             @map("regular_residency") @db.VarChar(255)
+  remarks               String?             @map("remarks")
+  otherRegularResidency String?             @map("other_regular_residency")
   interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_shelter_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_shelter_ir")
@@ -686,37 +602,33 @@ model IrShelter {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrSimDetails {
-  id             Int     @id @default(autoincrement())
-  phoneNumber    String? @map("phone_number") @db.VarChar(20)
-  sdr            String? @map("sdr")
-  imei           String? @map("imei") @db.VarChar(50)
-  trueCallerName String? @map("true_caller_name") @db.VarChar(255)
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
-  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_sim_details_ir_fkey")
+  phoneNumber           String?             @map("phone_number") @db.VarChar(20)
+  sdr                   String?             @map("sdr")
+  imei                  String?             @map("imei") @db.VarChar(50)
+  trueCallerName        String?             @map("true_caller_name") @db.VarChar(255)
   personId              String?             @map("person_id") @db.VarChar(50)
+  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_sim_details_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_sim_details_ir")
-  @@index([phoneNumber], map: "idx_ir_sim_details_phone")
   @@map("ir_sim_details")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model IrTypesOfDrugs {
-  id                  Int     @id @default(autoincrement())
-  typeOfDrug          String? @map("type_of_drug") @db.VarChar(255)
-  quantity            String? @map("quantity") @db.VarChar(255)
-  purchaseAmountInInr String? @map("purchase_amount_in_inr")
-  modeOfPayment       String? @map("mode_of_payment")
-  modeOfTransport     String? @map("mode_of_transport")
-
+  id                    Int                 @id @default(autoincrement())
   interrogationReportId String              @map("interrogation_report_id") @db.VarChar(50)
-  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_types_of_drugs_ir_fkey")
+  typeOfDrug            String?             @map("type_of_drug") @db.VarChar(255)
+  quantity              String?             @map("quantity") @db.VarChar(255)
+  purchaseAmountInInr   String?             @map("purchase_amount_in_inr")
+  modeOfPayment         String?             @map("mode_of_payment")
+  modeOfTransport       String?             @map("mode_of_transport")
   supplierId            String?             @map("supplier_person_id") @db.VarChar(50)
   receiverId            String?             @map("receivers_person_id") @db.VarChar(50)
+  interrogationReport   InterrogationReport @relation(fields: [interrogationReportId], references: [interrogationReportId], onDelete: Cascade, onUpdate: NoAction, map: "ir_types_of_drugs_ir_fkey")
 
   @@index([interrogationReportId], map: "idx_ir_types_of_drugs_ir")
-  @@index([typeOfDrug], map: "idx_ir_types_of_drugs_type")
   @@map("ir_types_of_drugs")
 }
 
@@ -738,21 +650,20 @@ model File {
   isDownloaded     Boolean?          @default(false) @map("is_downloaded")
   downloadError    String?           @map("download_error")
   downloadAttempts Int?              @default(0) @map("download_attempts")
+  created_at       DateTime?         @default(now()) @db.Timestamp(6)
 
   @@unique([sourceType, sourceField, parentId, fileId, fileIndex], map: "unique_file_per_source")
-  @@index([fileId], map: "idx_files_file_id")
-  @@index([filePath], map: "idx_files_file_path")
-  @@index([fileUrl], map: "idx_files_file_url")
   @@index([parentId], map: "idx_files_parent_id")
-  @@index([sourceField], map: "idx_files_source_field")
   @@index([sourceType, parentId], map: "idx_files_source_parent")
-  @@index([sourceType], map: "idx_files_source_type")
+  @@index([created_at], map: "idx_files_created_at")
+  @@index([sourceType, created_at], map: "idx_files_source_type_created")
   @@map("files")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model OldInterragationReport {
   interrogationReportId   String  @id @default(dbgenerated("gen_random_uuid()")) @map("interrogation_report_id") @db.Uuid
+  crimeId                 String  @map("crime_id") @db.VarChar(255)
   intAuntAddress          String? @map("int_aunt_address")
   intAuntMobileNo         String? @map("int_aunt_mobile_no") @db.VarChar(20)
   intAuntName             String? @map("int_aunt_name") @db.VarChar(255)
@@ -812,16 +723,15 @@ model OldInterragationReport {
   intWifeName             String? @map("int_wife_name") @db.VarChar(255)
   intWifeOccupation       String? @map("int_wife_occupation") @db.VarChar(255)
   intRelationTypeWife     String? @map("int_relation_type_wife") @db.VarChar(100)
+  crimes                  Crimes  @relation(fields: [crimeId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_crime")
 
-  crimeId String @map("crime_id") @db.VarChar(255)
-  crimes  Crimes @relation(fields: [crimeId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_crime")
-
-  @@index([crimeId], map: "idx_old_interragation_report_crime_id")
   @@map("old_interragation_report")
 }
 
 model Arrest {
   id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  crimeId               String    @map("crime_id") @db.VarChar(50)
+  personId              String?   @map("person_id") @db.VarChar(50)
   accusedSeqNo          String?   @map("accused_seq_no")
   accusedCode           String?   @map("accused_code")
   accusedType           String?   @map("accused_type")
@@ -836,14 +746,10 @@ model Arrest {
   isDied                Boolean?  @map("is_died")
   dateCreated           DateTime? @map("date_created") @db.Timestamptz(6)
   dateModified          DateTime? @map("date_modified") @db.Timestamptz(6)
-
-  crimeId  String   @map("crime_id") @db.VarChar(50)
-  crimes   Crimes   @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  personId String?  @map("person_id") @db.VarChar(50)
-  persons  Persons? @relation(fields: [personId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  crimes                Crimes    @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  persons               Persons?  @relation(fields: [personId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([crimeId, accusedSeqNo])
-  @@index([arrestedDate], map: "idx_arrests_arrested_date")
   @@index([crimeId], map: "idx_arrests_crime")
   @@index([personId], map: "idx_arrests_person")
   @@map("arrests")
@@ -851,15 +757,14 @@ model Arrest {
 
 model Disposal {
   id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  crimeId      String    @map("crime_id") @db.VarChar(50)
   disposalType String    @map("disposal_type")
   disposedAt   DateTime? @map("disposed_at") @db.Timestamptz(6)
   disposal     String?   @map("disposal")
   caseStatus   String?   @map("case_status")
   dateCreated  DateTime  @map("date_created") @db.Timestamptz(6)
   dateModified DateTime  @map("date_modified") @db.Timestamptz(6)
-
-  crimeId String @map("crime_id") @db.VarChar(50)
-  crimes  Crimes @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  crimes       Crimes    @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([crimeId, disposalType, disposedAt])
   @@index([crimeId], map: "idx_disposal_crime")
@@ -879,11 +784,14 @@ model AgentDeduplicationTracker {
   createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt         DateTime? @default(now()) @map("updated_at") @db.Timestamp(6)
 
+  @@index([allPersonIds], map: "idx_adt_all_person_ids_gin", type: Gin)
+  @@index([canonicalPersonId], map: "idx_adt_canonical_person_id")
   @@map("agent_deduplication_tracker")
 }
 
 model MoSeizure {
   moSeizureId        String    @id @map("mo_seizure_id") @db.VarChar(50)
+  crimeId            String    @map("crime_id") @db.VarChar(50)
   seqNo              String?   @map("seq_no") @db.VarChar(50)
   moId               String?   @map("mo_id") @db.VarChar(50)
   type               String?   @map("type") @db.VarChar(100)
@@ -907,9 +815,7 @@ model MoSeizure {
   moMediaFileId      String?   @map("mo_media_file_id")
   dateCreated        DateTime? @map("date_created") @db.Timestamptz(6)
   dateModified       DateTime? @map("date_modified") @db.Timestamptz(6)
-
-  crimeId String @map("crime_id") @db.VarChar(50)
-  crime   Crimes @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  crime              Crimes    @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([crimeId], map: "idx_mo_seizures_crime")
   @@index([seizedAt], map: "idx_mo_seizures_seized_at")
@@ -917,64 +823,64 @@ model MoSeizure {
 }
 
 model ChargesheetAccused {
-  id                    String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  personId              String    @map("accused_person_id") @db.VarChar(50)
-  chargeStatus          String?   @map("charge_status") @db.VarChar(30)
-  requestedForNbw       Boolean?  @default(false) @map("requested_for_nbw")
-  reasonForNoCharge     String?   @map("reason_for_no_charge")
-  isPersonMasterPresent Boolean?  @default(true) @map("is_person_master_present")
-  createdAt             DateTime? @map("created_at") @db.Timestamp(6)
+  id                    String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  chargesheetId         String      @map("chargesheet_id") @db.Uuid
+  personId              String      @map("accused_person_id") @db.VarChar(50)
+  chargeStatus          String?     @map("charge_status") @db.VarChar(30)
+  requestedForNbw       Boolean?    @default(false) @map("requested_for_nbw")
+  reasonForNoCharge     String?     @map("reason_for_no_charge")
+  isPersonMasterPresent Boolean?    @default(true) @map("is_person_master_present")
+  createdAt             DateTime?   @map("created_at") @db.Timestamp(6)
+  chargesheet           Chargesheet @relation(fields: [chargesheetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  chargesheetId String      @map("chargesheet_id") @db.Uuid
-  chargesheet   Chargesheet @relation(fields: [chargesheetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
+  @@index([chargesheetId], map: "idx_chargesheet_accused_cs_id")
+  @@index([chargesheetId, personId], map: "idx_chargesheet_accused_cs_person")
   @@map("chargesheet_accused")
 }
 
 model ChargesheetAct {
-  id                 String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  actDescription     String?   @map("act_description")
-  section            String?   @map("section") @db.VarChar(50)
-  rwRequired         Boolean?  @default(false) @map("rw_required")
-  sectionDescription String?   @map("section_description")
-  graveParticulars   String?   @map("grave_particulars")
-  createdAt          DateTime? @map("created_at") @db.Timestamp(6)
-
-  chargesheetId String      @map("chargesheet_id") @db.Uuid
-  chargesheet   Chargesheet @relation(fields: [chargesheetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                 String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  chargesheetId      String      @map("chargesheet_id") @db.Uuid
+  actDescription     String?     @map("act_description")
+  section            String?     @map("section") @db.VarChar(50)
+  rwRequired         Boolean?    @default(false) @map("rw_required")
+  sectionDescription String?     @map("section_description")
+  graveParticulars   String?     @map("grave_particulars")
+  createdAt          DateTime?   @map("created_at") @db.Timestamp(6)
+  chargesheet        Chargesheet @relation(fields: [chargesheetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("chargesheet_acts")
 }
 
 model ChargesheetFile {
-  id        String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  fileId    String?   @map("file_id") @db.VarChar(100)
-  createdAt DateTime? @map("created_at") @db.Timestamp(6)
-
+  id            String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   chargesheetId String      @map("chargesheet_id") @db.Uuid
+  fileId        String?     @map("file_id") @db.VarChar(100)
+  createdAt     DateTime?   @map("created_at") @db.Timestamp(6)
   chargesheet   Chargesheet @relation(fields: [chargesheetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("chargesheet_files")
 }
 
 model Chargesheet {
-  id                String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  chargesheetNo     String?   @map("chargesheet_no") @db.VarChar(50)
-  chargesheetNoIcjs String?   @map("chargesheet_no_icjs") @db.VarChar(50)
-  chargesheetDate   DateTime? @map("chargesheet_date") @db.Timestamp(6)
-  chargesheetType   String?   @map("chargesheet_type") @db.VarChar(50)
-  courtName         String?   @map("court_name")
-  isCcl             Boolean?  @default(false) @map("is_ccl")
-  isEsigned         Boolean?  @default(false) @map("is_esigned")
-  dateCreated       DateTime? @map("date_created") @db.Timestamp(6)
-  dateModified      DateTime? @map("date_modified") @db.Timestamp(6)
-
+  id                 String               @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   crimeId            String               @map("crime_id") @db.VarChar(50)
-  crime              Crimes               @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  chargesheetNo      String?              @map("chargesheet_no") @db.VarChar(50)
+  chargesheetNoIcjs  String?              @map("chargesheet_no_icjs") @db.VarChar(50)
+  chargesheetDate    DateTime?            @map("chargesheet_date") @db.Timestamp(6)
+  chargesheetType    String?              @map("chargesheet_type") @db.VarChar(50)
+  courtName          String?              @map("court_name")
+  isCcl              Boolean?             @default(false) @map("is_ccl")
+  isEsigned          Boolean?             @default(false) @map("is_esigned")
+  dateCreated        DateTime?            @map("date_created") @db.Timestamp(6)
+  dateModified       DateTime?            @map("date_modified") @db.Timestamp(6)
   chargesheetAccused ChargesheetAccused[]
   chargesheetActs    ChargesheetAct[]
   chargesheetFiles   ChargesheetFile[]
+  crime              Crimes               @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
+  @@index([crimeId], map: "idx_chargesheets_crime_id")
+  @@index([crimeId, chargesheetNo, chargesheetDate], map: "idx_chargesheets_crime_no_date")
   @@map("chargesheets")
 }
 
@@ -982,6 +888,7 @@ model Chargesheet {
 model ChargeSheetUpdate {
   id                     Int       @id @default(autoincrement())
   updateChargeSheetId    String    @unique @map("update_charge_sheet_id") @db.VarChar(50)
+  crimeId                String    @map("crime_id") @db.VarChar(50)
   chargeSheetNo          String?   @map("charge_sheet_no") @db.VarChar(100)
   chargeSheetDate        DateTime? @map("charge_sheet_date") @db.Timestamptz(6)
   chargeSheetStatus      String?   @map("charge_sheet_status") @db.VarChar(100)
@@ -989,348 +896,198 @@ model ChargeSheetUpdate {
   takenOnFileCaseType    String?   @map("taken_on_file_case_type") @db.VarChar(50)
   takenOnFileCourtCaseNo String?   @map("taken_on_file_court_case_no") @db.VarChar(100)
   dateCreated            DateTime? @map("date_created") @db.Timestamptz(6)
+  crimes                 Crimes    @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  crimeId String @map("crime_id") @db.VarChar(50)
-  crimes  Crimes @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@index([chargeSheetDate], map: "idx_charge_sheet_updates_charge_sheet_date")
-  @@index([chargeSheetNo], map: "idx_charge_sheet_updates_charge_sheet_no")
-  @@index([takenOnFileCourtCaseNo], map: "idx_charge_sheet_updates_court_case_no")
-  @@index([crimeId], map: "idx_charge_sheet_updates_crime_id")
-  @@index([chargeSheetDate, chargeSheetStatus], map: "idx_charge_sheet_updates_date_status")
   @@index([chargeSheetStatus], map: "idx_charge_sheet_updates_status")
-  @@index([takenOnFileDate], map: "idx_charge_sheet_updates_taken_on_file_date")
   @@index([updateChargeSheetId], map: "idx_charge_sheet_updates_update_id")
   @@map("charge_sheet_updates")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model FslCaseProperty {
-  casePropertyId       String    @id @map("case_property_id") @db.VarChar(255)
-  caseType             String?   @map("case_type") @db.VarChar(100)
-  moId                 String?   @map("mo_id") @db.VarChar(255)
-  status               String?   @map("status") @db.VarChar(100)
-  sendDate             DateTime? @map("send_date") @db.Timestamptz(6)
-  fslDate              DateTime? @map("fsl_date") @db.Timestamptz(6)
-  dateDisposal         DateTime? @map("date_disposal") @db.Timestamptz(6)
-  releaseDate          DateTime? @map("release_date") @db.Timestamptz(6)
-  returnDate           DateTime? @map("return_date") @db.Timestamptz(6)
-  dateCustody          DateTime? @map("date_custody") @db.Timestamptz(6)
-  dateSentToExpert     DateTime? @map("date_sent_to_expert") @db.Timestamptz(6)
-  courtOrderDate       DateTime? @map("court_order_date") @db.Timestamptz(6)
-  forwardingThrough    String?   @map("forwarding_through") @db.VarChar(255)
-  courtName            String?   @map("court_name") @db.VarChar(500)
-  fslCourtName         String?   @map("fsl_court_name") @db.VarChar(500)
-  cprCourtName         String?   @map("cpr_court_name") @db.VarChar(500)
-  courtOrderNumber     String?   @map("court_order_number") @db.VarChar(255)
-  fslNo                String?   @map("fsl_no") @db.VarChar(255)
-  fslRequestId         String?   @map("fsl_request_id") @db.VarChar(255)
-  reportReceived       Boolean?  @default(false) @map("report_received")
-  opinion              String?   @map("opinion")
-  opinionFurnished     String?   @map("opinion_furnished") @db.VarChar(255)
-  strengthOfEvidence   String?   @map("strength_of_evidence") @db.VarChar(255)
-  expertType           String?   @map("expert_type") @db.VarChar(255)
-  otherExpertType      String?   @map("other_expert_type") @db.VarChar(255)
-  cprNo                String?   @map("cpr_no") @db.VarChar(255)
-  directionByCourt     String?   @map("direction_by_court")
-  detailsDisposal      String?   @map("details_disposal")
-  placeDisposal        String?   @map("place_disposal") @db.VarChar(500)
-  releaseOrderNo       String?   @map("release_order_no") @db.VarChar(255)
-  placeCustody         String?   @map("place_custody") @db.VarChar(500)
-  assignCustody        String?   @map("assign_custody") @db.VarChar(255)
-  propertyReceivedBack Boolean?  @default(false) @map("property_received_back")
-  dateCreated          DateTime? @map("date_created") @db.Timestamptz(6)
-  dateModified         DateTime? @map("date_modified") @db.Timestamptz(6)
-
+  casePropertyId       String                 @id @map("case_property_id") @db.VarChar(255)
+  caseType             String?                @map("case_type") @db.VarChar(100)
   crimeId              String                 @map("crime_id") @db.VarChar(50)
+  moId                 String?                @map("mo_id") @db.VarChar(255)
+  status               String?                @map("status") @db.VarChar(100)
+  sendDate             DateTime?              @map("send_date") @db.Timestamptz(6)
+  fslDate              DateTime?              @map("fsl_date") @db.Timestamptz(6)
+  dateDisposal         DateTime?              @map("date_disposal") @db.Timestamptz(6)
+  releaseDate          DateTime?              @map("release_date") @db.Timestamptz(6)
+  returnDate           DateTime?              @map("return_date") @db.Timestamptz(6)
+  dateCustody          DateTime?              @map("date_custody") @db.Timestamptz(6)
+  dateSentToExpert     DateTime?              @map("date_sent_to_expert") @db.Timestamptz(6)
+  courtOrderDate       DateTime?              @map("court_order_date") @db.Timestamptz(6)
+  dateCreated          DateTime?              @map("date_created") @db.Timestamptz(6)
+  dateModified         DateTime?              @map("date_modified") @db.Timestamptz(6)
+  forwardingThrough    String?                @map("forwarding_through") @db.VarChar(255)
+  courtName            String?                @map("court_name") @db.VarChar(500)
+  fslCourtName         String?                @map("fsl_court_name") @db.VarChar(500)
+  cprCourtName         String?                @map("cpr_court_name") @db.VarChar(500)
+  courtOrderNumber     String?                @map("court_order_number") @db.VarChar(255)
+  fslNo                String?                @map("fsl_no") @db.VarChar(255)
+  fslRequestId         String?                @map("fsl_request_id") @db.VarChar(255)
+  reportReceived       Boolean?               @default(false) @map("report_received")
+  opinion              String?                @map("opinion")
+  opinionFurnished     String?                @map("opinion_furnished") @db.VarChar(255)
+  strengthOfEvidence   String?                @map("strength_of_evidence") @db.VarChar(255)
+  expertType           String?                @map("expert_type") @db.VarChar(255)
+  otherExpertType      String?                @map("other_expert_type") @db.VarChar(255)
+  cprNo                String?                @map("cpr_no") @db.VarChar(255)
+  directionByCourt     String?                @map("direction_by_court")
+  detailsDisposal      String?                @map("details_disposal")
+  placeDisposal        String?                @map("place_disposal") @db.VarChar(500)
+  releaseOrderNo       String?                @map("release_order_no") @db.VarChar(255)
+  placeCustody         String?                @map("place_custody") @db.VarChar(500)
+  assignCustody        String?                @map("assign_custody") @db.VarChar(255)
+  propertyReceivedBack Boolean?               @default(false) @map("property_received_back")
   crimes               Crimes                 @relation(fields: [crimeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   fslCasePropertyMedia FslCasePropertyMedia[]
 
-  @@index([caseType], map: "idx_fsl_case_property_case_type")
   @@index([crimeId], map: "idx_fsl_case_property_crime_id")
-  @@index([dateCreated], map: "idx_fsl_case_property_date_created")
-  @@index([fslDate], map: "idx_fsl_case_property_fsl_date")
-  @@index([moId], map: "idx_fsl_case_property_mo_id")
-  @@index([sendDate], map: "idx_fsl_case_property_send_date")
-  @@index([status], map: "idx_fsl_case_property_status")
   @@map("fsl_case_property")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model FslCasePropertyMedia {
-  mediaId String  @id @map("media_id") @db.Uuid
-  fileId  String? @map("file_id") @db.VarChar(255)
-
+  mediaId        String          @id @map("media_id") @db.Uuid
   casePropertyId String          @map("case_property_id") @db.VarChar(255)
+  fileId         String?         @map("file_id") @db.VarChar(255)
   caseProperty   FslCaseProperty @relation(fields: [casePropertyId], references: [casePropertyId], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([casePropertyId], map: "idx_fsl_case_property_media_case_property_id")
   @@map("fsl_case_property_media")
 }
 
-view Accuseds {
-  id                         String?   @db.VarChar(50)
-  unit                       String?
-  ps                         String?
-  year                       Int?
-  crimeId                    String?   @db.VarChar(50)
-  personId                   String?   @db.VarChar(50)
-  firNumber                  String?
-  firRegNum                  String?
-  section                    String?
-  crimeRegDate               DateTime? @db.Timestamp(6)
-  briefFacts                 String?
-  accusedCode                String?
-  seqNum                     String?
-  isCCL                      Boolean?
-  beard                      String?
-  build                      String?
-  color                      String?
-  ear                        String?
-  eyes                       String?
-  face                       String?
-  hair                       String?
-  height                     String?
-  leucoderma                 String?
-  mole                       String?
-  mustache                   String?
-  nose                       String?
-  teeth                      String?
-  accusedStatus              String?
-  accusedType                String?
-  noOfAccusedInvolved        Int?
-  accusedDetails             Json?
-  name                       String?
-  surname                    String?
-  alias                      String?
-  fullName                   String?
-  parentage                  String?
-  domicile                   String?
-  relationType               String?
-  gender                     String?
-  isDied                     Boolean?
-  dateOfBirth                DateTime? @db.Date
-  age                        Int?
-  occupation                 String?
-  educationQualification     String?
-  caste                      String?
-  subCaste                   String?
-  religion                   String?
-  nationality                String?
-  designation                String?
-  placeOfWork                String?
-  presentHouseNo             String?
-  presentStreetRoadNo        String?
-  presentWardColony          String?
-  presentLandmarkMilestone   String?
-  presentLocalityVillage     String?
-  presentAreaMandal          String?
-  presentDistrict            String?
-  presentStateUt             String?
-  presentCountry             String?
-  presentResidencyType       String?
-  presentPinCode             String?
-  presentJurisdictionPs      String?
-  permanentHouseNo           String?
-  permanentStreetRoadNo      String?
-  permanentWardColony        String?
-  permanentLandmarkMilestone String?
-  permanentLocalityVillage   String?
-  permanentAreaMandal        String?
-  permanentDistrict          String?
-  permanentStateUt           String?
-  permanentCountry           String?
-  permanentResidencyType     String?
-  permanentPinCode           String?
-  permanentJurisdictionPs    String?
-  phoneNumber                String?
-  countryCode                String?
-  emailId                    String?
-  noOfCrimes                 Int?
-  previouslyInvolvedCases    Json?
-  drugType                   String[]
-  drugWithQuantity           Json?
-  caseClassification         String?
-  caseStatus                 String?
+model dedup_cluster_state {
+  id                BigInt   @id @default(autoincrement())
+  cluster_id        Int
+  person_index      Int
+  person_id         String   @db.VarChar(50)
+  is_representative Boolean  @default(false)
+  created_at        DateTime @default(now()) @db.Timestamp(6)
 
-  @@map("accuseds")
+  @@unique([cluster_id, person_index], map: "uix_cluster_person")
 }
 
-view Firs {
-  id                    String?   @db.VarChar(50)
-  unit                  String?
-  ps                    String?
-  year                  Int?
-  firNumber             String?
-  firRegNum             String?
-  section               String?
-  firType               String?
-  crimeType             String?
-  crimeRegDate          DateTime? @db.Timestamp(6)
-  majorHead             String?
-  minorHead             String?
-  ioName                String?
-  ioRank                String?
-  briefFacts            String?
-  noOfAccusedInvolved   Int?
-  accusedDetails        Json?
-  propertyDetails       Json?
-  moSeizuresDetails     Json?
-  drugType              String[]
-  drugWithQuantity      Json?
-  caseClassification    String?
-  caseStatus            String?
-  chargesheets          Json?
-  chargesheetUpdates    Json?
-  stipulatedPeriodForCS String?
-  documents             Json?
-  firCopy               String?
-  propertyDocuments     Json?
-  irDocuments           Json?
-  disposalDetails       Json?
-  irDetails             Json?
-  casePropertyDetails   Json?
+model dedup_comparison_progress {
+  id                  BigInt   @id @default(autoincrement())
+  person_i_index      Int
+  person_j_index      Int
+  person_i_id         String   @db.VarChar(50)
+  person_j_id         String   @db.VarChar(50)
+  match_score_numeric Float
+  is_match            Boolean  @default(false)
+  matching_method     String?  @db.VarChar(100)
+  completed_at        DateTime @default(now()) @db.Timestamp(6)
 
-  @@map("firs")
+  @@index([person_i_index], map: "ix_dedup_comparison_progress_person_i_index")
 }
 
-view AdvancedSearchAccuseds {
-  id                         String?
-  accusedCode                String?
-  type                       String?
-  seqNum                     String?
-  isCCL                      Boolean?
-  beard                      String?
-  build                      String?
-  color                      String?
-  ear                        String?
-  eyes                       String?
-  face                       String?
-  hair                       String?
-  height                     String?
-  leucoderma                 String?
-  mole                       String?
-  mustache                   String?
-  nose                       String?
-  teeth                      String?
-  accusedType                String?
-  accusedStatus              String?
-  psCode                     String?
-  firNum                     String?
-  firRegNum                  String?
-  firType                    String?
-  sections                   String?
-  firDate                    DateTime? @db.Timestamp(6)
-  caseStatus                 String?
-  caseClass                  String?
-  majorHead                  String?
-  minorHead                  String?
-  crimeType                  String?
-  ioName                     String?
-  ioRank                     String?
-  briefFacts                 String?
-  psName                     String?
-  circleCode                 String?
-  circleName                 String?
-  sdpoCode                   String?
-  sdpoName                   String?
-  subZoneCode                String?
-  subZoneName                String?
-  distCode                   String?
-  distName                   String?
-  rangeCode                  String?
-  rangeName                  String?
-  zoneCode                   String?
-  zoneName                   String?
-  adgCode                    String?
-  adgName                    String?
-  name                       String?
-  surname                    String?
-  alias                      String?
-  fullName                   String?
-  relationType               String?
-  relativeName               String?
-  gender                     String?
-  isDied                     Boolean?
-  dateOfBirth                DateTime? @db.Date
-  age                        Int?
-  occupation                 String?
-  educationQualification     String?
-  caste                      String?
-  subCaste                   String?
-  religion                   String?
-  domicile                   String?
-  nationality                String?
-  designation                String?
-  placeOfWork                String?
-  presentHouseNo             String?
-  presentStreetRoadNo        String?
-  presentWardColony          String?
-  presentLandmarkMilestone   String?
-  presentLocalityVillage     String?
-  presentAreaMandal          String?
-  presentDistrict            String?
-  presentStateUt             String?
-  presentCountry             String?
-  presentResidencyType       String?
-  presentPinCode             String?
-  presentJurisdictionPs      String?
-  permanentHouseNo           String?
-  permanentStreetRoadNo      String?
-  permanentWardColony        String?
-  permanentLandmarkMilestone String?
-  permanentLocalityVillage   String?
-  permanentAreaMandal        String?
-  permanentDistrict          String?
-  permanentStateUt           String?
-  permanentCountry           String?
-  permanentResidencyType     String?
-  permanentPinCode           String?
-  permanentJurisdictionPs    String?
-  phoneNumber                String?
-  countryCode                String?
-  emailId                    String?
-  presentAddress             String?
-  permanentAddress           String?
-  drugDetails                Json?
-  stipulatedPeriodForCS      String?
+model dedup_run_metadata {
+  id                   BigInt    @id @default(autoincrement())
+  run_id               String    @unique @db.VarChar(50)
+  total_persons        Int
+  last_processed_index Int       @default(0)
+  status               String    @default("running") @db.VarChar(20)
+  started_at           DateTime  @default(now()) @db.Timestamp(6)
+  updated_at           DateTime  @default(now()) @db.Timestamp(6)
+  completed_at         DateTime? @db.Timestamp(6)
+}
 
-  @@map("advanced_search_accuseds")
+model drug_categories {
+  id             Int       @id @default(autoincrement())
+  raw_name       String    @unique
+  standard_name  String
+  category_group String
+  is_verified    Boolean?  @default(true)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([raw_name], map: "idx_drug_categories_raw_name")
+  @@index([standard_name], map: "idx_drug_categories_standard_name")
+  @@index([raw_name(ops: raw("gin_trgm_ops"))], map: "trgm_idx_drug_raw_name", type: Gin)
+}
+
+model drug_ignore_list {
+  id         Int       @id @default(autoincrement())
+  term       String    @unique
+  reason     String?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([term], map: "idx_drug_ignore_list_term")
+  @@index([term], map: "idx_ignore_term")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model geo_countries {
+  country_name String?
+  state_name   String?
+  timezone     String?
+
+  @@index([country_name(ops: raw("gin_trgm_ops"))], map: "idx_geo_countries_country_trgm", type: Gin)
+  @@index([state_name(ops: raw("gin_trgm_ops"))], map: "idx_geo_countries_state_trgm", type: Gin)
+  @@ignore
+}
+
+model geo_reference {
+  id                   Int       @id @default(autoincrement())
+  state_code           String?   @db.VarChar(10)
+  state_name           String?   @db.VarChar(255)
+  district_code        String?   @db.VarChar(10)
+  district_name        String?   @db.VarChar(255)
+  sub_district_code    String?   @db.VarChar(20)
+  sub_district_name    String?   @db.VarChar(255)
+  village_code         String?   @db.VarChar(20)
+  village_version      String?   @db.VarChar(10)
+  village_name_english String?   @db.VarChar(255)
+  village_name_local   String?   @db.VarChar(255)
+  village_category     String?   @db.VarChar(50)
+  village_status       String?   @db.VarChar(50)
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([district_name(ops: raw("gin_trgm_ops"))], map: "geo_ref_district_trgm", type: Gin)
+  @@index([sub_district_name(ops: raw("gin_trgm_ops"))], map: "geo_ref_mandal_trgm", type: Gin)
+  @@index([state_name(ops: raw("gin_trgm_ops"))], map: "geo_ref_state_trgm", type: Gin)
+  @@index([district_name(ops: raw("gin_trgm_ops")), sub_district_name(ops: raw("gin_trgm_ops"))], map: "geo_ref_trgm_idx", type: Gin)
+  @@index([sub_district_name(ops: raw("gin_trgm_ops"))], map: "geo_reference_mandal_trgm", type: Gin)
+  @@index([district_name(ops: raw("gin_trgm_ops"))], map: "trgm_idx_geo_district", type: Gin)
+  @@index([state_name(ops: raw("gin_trgm_ops"))], map: "trgm_idx_geo_state", type: Gin)
+  @@index([sub_district_name(ops: raw("gin_trgm_ops"))], map: "trgm_idx_geo_sub_district", type: Gin)
+  @@index([village_name_english(ops: raw("gin_trgm_ops"))], map: "trgm_idx_geo_village", type: Gin)
+}
+
+model ir_pending_fk {
+  id            Int       @id @default(autoincrement())
+  ir_id         String    @db.VarChar(50)
+  crime_id      String    @db.VarChar(50)
+  raw_data      Json
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  retry_count   Int?      @default(0)
+  last_retry_at DateTime? @db.Timestamp(6)
+  resolved      Boolean?  @default(false)
+  resolved_at   DateTime? @db.Timestamp(6)
+}
+
+model properties_pending_fk {
+  id            Int       @id @default(autoincrement())
+  property_id   String    @db.VarChar(50)
+  crime_id      String    @db.VarChar(50)
+  raw_data      Json
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  retry_count   Int?      @default(0)
+  last_retry_at DateTime? @db.Timestamp(6)
+  resolved      Boolean?  @default(false)
+  resolved_at   DateTime? @db.Timestamp(6)
 }
 
 view AdvancedSearchFirs {
-  id                    String?
-  psCode                String?
-  firNum                String?
-  firRegNum             String?
-  firType               String?
-  sections              String?
-  firDate               DateTime? @db.Timestamp(6)
-  caseStatus            String?
-  caseClass             String?
-  majorHead             String?
-  minorHead             String?
-  crimeType             String?
-  ioName                String?
-  ioRank                String?
-  briefFacts            String?
-  psName                String?
-  circleCode            String?
-  circleName            String?
-  sdpoCode              String?
-  sdpoName              String?
-  subZoneCode           String?
-  subZoneName           String?
-  distCode              String?
-  distName              String?
-  rangeCode             String?
-  rangeName             String?
-  zoneCode              String?
-  zoneName              String?
-  adgCode               String?
-  adgName               String?
-  drugDetails           Json?
-  stipulatedPeriodForCS String?
+  id           String?
+  firNum       String?   @db.VarChar(50)
+  firDate      DateTime? @db.Timestamp(6)
+  psCode       String?   @db.VarChar(20)
+  psName       String?   @db.VarChar(255)
+  districtName String?   @db.VarChar(255)
+  drugDetails  Json?
 
   @@map("advanced_search_firs")
 }
@@ -1356,60 +1113,6 @@ view PersonDeduplicationSummary {
   @@map("person_deduplication_summary")
 }
 
-view PersonsView {
-  id                         String?   @db.VarChar(50)
-  alias                      String?
-  name                       String?
-  surname                    String?
-  fullName                   String?
-  relationType               String?
-  relativeName               String?
-  gender                     String?
-  isDied                     Boolean?
-  dateOfBirth                DateTime? @db.Date
-  age                        Int?
-  occupation                 String?
-  educationQualification     String?
-  caste                      String?
-  subCaste                   String?
-  religion                   String?
-  nationality                String?
-  designation                String?
-  placeOfWork                String?
-  presentHouseNo             String?
-  presentStreetRoadNo        String?
-  presentWardColony          String?
-  presentLandmarkMilestone   String?
-  presentLocalityVillage     String?
-  presentAreaMandal          String?
-  presentDistrict            String?
-  presentStateUt             String?
-  presentCountry             String?
-  presentResidencyType       String?
-  presentPinCode             String?
-  presentJurisdictionPs      String?
-  permanentHouseNo           String?
-  permanentStreetRoadNo      String?
-  permanentWardColony        String?
-  permanentLandmarkMilestone String?
-  permanentLocalityVillage   String?
-  permanentAreaMandal        String?
-  permanentDistrict          String?
-  permanentStateUt           String?
-  permanentCountry           String?
-  permanentResidencyType     String?
-  permanentPinCode           String?
-  permanentJurisdictionPs    String?
-  phoneNumber                String?
-  countryCode                String?
-  emailId                    String?
-  identityDocuments          Json?
-  documents                  Json?
-  crimes                     Json?
-
-  @@map("_persons")
-}
-
 view files_summary {
   source_type          source_type_enum?
   source_field         source_field_enum?
@@ -1418,88 +1121,14 @@ view files_summary {
   unique_files         BigInt?
 }
 
-view CriminalProfiles {
-  id                         String?   @db.VarChar(50)
-  alias                      String?
-  name                       String?
-  surname                    String?
-  fullName                   String?
-  relationType               String?
-  relativeName               String?
-  gender                     String?
-  isDied                     Boolean?
-  dateOfBirth                DateTime? @db.Date
-  age                        Int?
-  domicile                   String?
-  occupation                 String?
-  educationQualification     String?
-  caste                      String?
-  subCaste                   String?
-  religion                   String?
-  nationality                String?
-  designation                String?
-  placeOfWork                String?
-  presentHouseNo             String?
-  presentStreetRoadNo        String?
-  presentWardColony          String?
-  presentLandmarkMilestone   String?
-  presentLocalityVillage     String?
-  presentAreaMandal          String?
-  presentDistrict            String?
-  presentStateUt             String?
-  presentCountry             String?
-  presentResidencyType       String?
-  presentPinCode             String?
-  presentJurisdictionPs      String?
-  permanentHouseNo           String?
-  permanentStreetRoadNo      String?
-  permanentWardColony        String?
-  permanentLandmarkMilestone String?
-  permanentLocalityVillage   String?
-  permanentAreaMandal        String?
-  permanentDistrict          String?
-  permanentStateUt           String?
-  permanentCountry           String?
-  permanentResidencyType     String?
-  permanentPinCode           String?
-  permanentJurisdictionPs    String?
-  phoneNumber                String?
-  countryCode                String?
-  emailId                    String?
-  identityDocuments          Json?
-  documents                  Json?
-  crimes                     Json?
-  latestCrimeId              String?   @db.VarChar
-  latestCrimeNo              String?   @db.VarChar
-  noOfCrimes                 BigInt?
-  arrestCount                BigInt?
-  previouslyInvolvedCases    Json?
-  associatedDrugs            String[]
-  DOPAMSLinks                String[]
-  counselled                 String?
-  socialMedia                String[]
-  RTAData                    String?
-  bankAcountDetails          String?
-  passportDetails_Foreigners String?
-  purposeOfVISA_Foreigners   String?
-  validityOfVISA_Foreigners  String?
-  localaddress_Foreigners    String?
-  nativeAddress_Foreigners   String?
-  statusOfTheAccused         String?
-  historySheet               String?
-  propertyForfeited          String?
-  PITNDPSInitiated           String?
-  photo                      String?
-
-  @@map("criminal_profiles")
-}
-
 enum source_field_enum {
   FIR_COPY
   MEDIA
   INTERROGATION_REPORT
   DOPAMS_DATA
   IDENTITY_DETAILS
+  MO_MEDIA
+  uploadChargeSheet
 }
 
 enum source_type_enum {
@@ -1507,4 +1136,7 @@ enum source_type_enum {
   interrogation
   property
   person
+  mo_seizures
+  chargesheets
+  case_property
 }

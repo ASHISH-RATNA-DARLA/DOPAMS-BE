@@ -7,10 +7,22 @@ export const OverallCrimeStatsType = new GraphQLObjectType({
     totalAccusedInvolved: { type: GraphQLInt },
     totalArrests: { type: GraphQLInt },
     totalSeizuresKg: { type: GraphQLString },
-    totalSeizuresMl: { type: GraphQLString },
+    totalSeizuresL: { type: GraphQLString },
+    totalSeizureCount: { type: GraphQLString },
     totalSeizuresWorth: { type: GraphQLString },
     totalCommercialFirs: { type: GraphQLInt },
     totalConvictionFirs: { type: GraphQLInt },
+  }),
+});
+
+export const SeizuresByDrugFormType = new GraphQLObjectType({
+  name: 'SeizuresByDrugFormType',
+  fields: () => ({
+    solidSeizuresKg: { type: new GraphQLNonNull(GraphQLString) },
+    solidSeizuresG: { type: new GraphQLNonNull(GraphQLString) },
+    liquidSeizuresL: { type: new GraphQLNonNull(GraphQLString) },
+    liquidSeizuresMl: { type: new GraphQLNonNull(GraphQLString) },
+    countSeizuresUnits: { type: new GraphQLNonNull(GraphQLString) },
   }),
 });
 

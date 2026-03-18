@@ -12,6 +12,7 @@ import { PaginationType } from 'schema/pagination/pagination';
 import { StatisticsListType } from 'schema/misc/statistics';
 import { DocumentType } from 'schema/misc/document';
 import { IrDetailsType } from './interrogation_report';
+import { DrugTypeGroupType } from './seizures';
 
 export const FirType = new GraphQLObjectType({
   name: 'FirType',
@@ -32,22 +33,25 @@ export const FirType = new GraphQLObjectType({
     ioRank: { type: GraphQLString },
     briefFacts: { type: GraphQLString },
     noOfAccusedInvolved: { type: GraphQLInt },
-    accusedDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AccusedDetailsType))) },
-    propertyDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(PropertyDetails))) },
-    moSeizuresDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(MoSeizureDetailsType))) },
-    drugWithQuantity: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DrugDetailsType))) },
+    accusedDetails: { type: new GraphQLList(new GraphQLNonNull(AccusedDetailsType)) },
+    propertyDetails: { type: new GraphQLList(new GraphQLNonNull(PropertyDetails)) },
+    moSeizuresDetails: { type: new GraphQLList(new GraphQLNonNull(MoSeizureDetailsType)) },
+    drugWithQuantity: { type: new GraphQLList(new GraphQLNonNull(DrugDetailsType)) },
     caseClassification: { type: GraphQLString },
     caseStatus: { type: GraphQLString },
+    isCommercial: { type: GraphQLBoolean },
+    convictionCount: { type: GraphQLInt },
+    totalDisposals: { type: GraphQLInt },
     stipulatedPeriodForCS: { type: GraphQLString },
-    chargesheets: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ChargesheetType))) },
-    chargesheetUpdates: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ChargesheetUpdateType))) },
-    documents: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DocumentType))) },
+    chargesheets: { type: new GraphQLList(new GraphQLNonNull(ChargesheetType)) },
+    chargesheetUpdates: { type: new GraphQLList(new GraphQLNonNull(ChargesheetUpdateType)) },
+    documents: { type: new GraphQLList(new GraphQLNonNull(DocumentType)) },
     firCopy: { type: GraphQLString },
-    propertyDocuments: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(FileDetailsType))) },
-    irDocuments: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(FileDetailsType))) },
-    disposalDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DisposalDetailsType))) },
-    irDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(IrDetailsType))) },
-    casePropertyDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(CasePropertyDetailsType))) },
+    propertyDocuments: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) },
+    irDocuments: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) },
+    disposalDetails: { type: new GraphQLList(new GraphQLNonNull(DisposalDetailsType)) },
+    irDetails: { type: new GraphQLList(new GraphQLNonNull(IrDetailsType)) },
+    casePropertyDetails: { type: new GraphQLList(new GraphQLNonNull(CasePropertyDetailsType)) },
   }),
 });
 
@@ -172,7 +176,7 @@ const ChargesheetUpdateType = new GraphQLObjectType({
   }),
 });
 
-const DisposalDetailsType = new GraphQLObjectType({
+export const DisposalDetailsType = new GraphQLObjectType({
   name: 'DisposalDetailsType',
   fields: () => ({
     id: { type: GraphQLID },
@@ -230,7 +234,10 @@ export const DrugDetailsType = new GraphQLObjectType({
   name: 'DrugDetailsType',
   fields: () => ({
     name: { type: GraphQLString },
-    quantity: { type: GraphQLString },
+    quantityKg: { type: GraphQLString },
+    quantityMl: { type: GraphQLString },
+    quantityCount: { type: GraphQLString },
+    worth: { type: GraphQLString },
   }),
 });
 
@@ -261,7 +268,7 @@ export const FirsFilterValuesType = new GraphQLObjectType({
     caseClass: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     caseStatus: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     years: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLInt))) },
-    drugTypes: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    drugTypes: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DrugTypeGroupType))) },
   }),
 });
 

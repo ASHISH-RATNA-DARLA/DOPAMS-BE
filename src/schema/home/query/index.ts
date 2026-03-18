@@ -8,6 +8,7 @@ import {
   InvestigationRelatedInfoType,
   OverallCrimeStatsType,
   RegionalOverviewType,
+  SeizuresByDrugFormType,
 } from '..';
 import {
   getAccusedTypeClassification,
@@ -17,9 +18,11 @@ import {
   getDomicileClassification,
   getDrugCases,
   getDrugData,
+  getDrugList,
   getInvestigationRelatedInfo,
   getOverallCrimeStats,
   getRegionalOverview,
+  getSeizuresByDrugForm,
   getStipulatedTimeClassification,
   getTrialCasesClassification,
 } from '../services';
@@ -32,6 +35,14 @@ const HomeQueryFields = {
       to: { type: GraphQLString },
     },
     resolve: (_root, { from, to }) => getOverallCrimeStats(from, to),
+  },
+  seizuresByDrugForm: {
+    type: new GraphQLNonNull(SeizuresByDrugFormType),
+    args: {
+      from: { type: GraphQLString },
+      to: { type: GraphQLString },
+    },
+    resolve: (_root, { from, to }) => getSeizuresByDrugForm(from, to),
   },
   caseStatusClassification: {
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ClassificationsType))),
@@ -57,6 +68,10 @@ const HomeQueryFields = {
       drugNames: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     },
     resolve: (_root, { from, to, drugNames }) => getDrugData(from, to, drugNames),
+  },
+  drugList: {
+    type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))),
+    resolve: () => getDrugList(),
   },
   drugCases: {
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DrugCasesType))),

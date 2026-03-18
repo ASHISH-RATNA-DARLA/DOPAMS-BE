@@ -1,12 +1,20 @@
 import { GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLObjectType, GraphQLString } from 'graphql';
 import { StatisticsListType } from 'schema/misc/statistics';
 
+export const DrugTypeGroupType = new GraphQLObjectType({
+  name: 'DrugTypeGroup',
+  fields: () => ({
+    categoryName: { type: new GraphQLNonNull(GraphQLString) },
+    drugs: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+  }),
+});
+
 export const SeizuresFilterValuesType = new GraphQLObjectType({
   name: 'SeizuresFilterValuesType',
   fields: () => ({
     units: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     years: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLInt))) },
-    drugTypes: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    drugTypes: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DrugTypeGroupType))) },
   }),
 });
 
@@ -24,7 +32,7 @@ const SeizureAbstractTotalsType = new GraphQLObjectType({
   fields: () => ({
     totalCases: { type: new GraphQLNonNull(GraphQLInt) },
     totalQuantityKg: { type: new GraphQLNonNull(GraphQLString) },
-    totalQuantityMl: { type: new GraphQLNonNull(GraphQLString) },
+    totalQuantityL: { type: new GraphQLNonNull(GraphQLString) },
     totalQuantityCount: { type: new GraphQLNonNull(GraphQLString) },
     totalWorth: { type: new GraphQLNonNull(GraphQLString) },
   }),
@@ -36,7 +44,7 @@ const SeizureAbstractYearTotalEntryType = new GraphQLObjectType({
     year: { type: new GraphQLNonNull(GraphQLString) },
     totalCases: { type: new GraphQLNonNull(GraphQLInt) },
     totalQuantityKg: { type: new GraphQLNonNull(GraphQLString) },
-    totalQuantityMl: { type: new GraphQLNonNull(GraphQLString) },
+    totalQuantityL: { type: new GraphQLNonNull(GraphQLString) },
     totalQuantityCount: { type: new GraphQLNonNull(GraphQLString) },
     totalWorth: { type: new GraphQLNonNull(GraphQLString) },
   }),

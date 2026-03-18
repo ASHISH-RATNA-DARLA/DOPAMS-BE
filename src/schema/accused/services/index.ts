@@ -111,25 +111,31 @@ export function buildFilters(filters: AccusedFilterInput = {}) {
 
   const domicile = filters.domicile;
   if (domicile && Object.keys(domicile).length > 0) {
-    const clausesForDomicile: string[] = [];
+    // Map the domicile input keys to the corresponding flat columns in accuseds_mv.
+    // The domicile filter searches present/permanent address fields directly on the MV row —
+    // NOT inside "accusedDetails" (which now holds co-accused person data, not address data).
+    const domicileColumnMap: Record<string, string> = {
+      houseNo: 'presentHouseNo',
+      streetRoadNo: 'presentStreetRoadNo',
+      wardColony: 'presentWardColony',
+      landmarkMilestone: 'presentLandmarkMilestone',
+      localityVillage: 'presentLocalityVillage',
+      areaMandal: 'presentAreaMandal',
+      district: 'presentDistrict',
+      stateUT: 'presentStateUt',
+      country: 'presentCountry',
+      residencyType: 'presentResidencyType',
+      pinCode: 'presentPinCode',
+      jurisdictionPS: 'presentJurisdictionPs',
+    };
 
     Object.entries(domicile).forEach(([key, value]) => {
-      if (value && value.trim() !== '') {
+      const col = domicileColumnMap[key];
+      if (col && value && value.trim() !== '') {
         params.push(`%${value}%`);
-        const paramIndex = params.length;
-        clausesForDomicile.push(`elem->>'${key}' ILIKE $${paramIndex}`);
+        clauses.push(`"${col}" ILIKE $${params.length}`);
       }
     });
-
-    if (clausesForDomicile.length > 0) {
-      clauses.push(`
-      EXISTS (
-        SELECT 1
-        FROM jsonb_array_elements("accusedDetails") AS elem
-        WHERE ${clausesForDomicile.join(' AND ')}
-      )
-    `);
-    }
   }
 
   const accusedSearch = filters.accuseds;
@@ -216,6 +222,26 @@ export async function getAccused(id: string) {
   const accused = result[0];
 
   if (!accused) throw new ResourceNotFoundException('Accused Not Found');
+
+  // accuseds_mv COUNT(*) subqueries return BigInt — coerce to Number for GraphQLInt.
+  if (typeof (accused as any).noOfAccusedInvolved === 'bigint') {
+    (accused as any).noOfAccusedInvolved = Number((accused as any).noOfAccusedInvolved);
+  }
+  if (typeof (accused as any).noOfCrimes === 'bigint') {
+    (accused as any).noOfCrimes = Number((accused as any).noOfCrimes);
+  }
+
+  // MV now returns previouslyInvolvedCases as { crimeId, firNumber }.
+  // Remap to { id, value } to match the GraphQL CrimeDetailsType and frontend expectations.
+  if (Array.isArray((accused as any).previouslyInvolvedCases)) {
+    (accused as any).previouslyInvolvedCases = (accused as any).previouslyInvolvedCases.map(
+      (c: { crimeId: string; firNumber: string }) => ({
+        id: c.crimeId,
+        value: c.firNumber,
+      })
+    );
+  }
+
   return accused;
 }
 
@@ -237,6 +263,26 @@ export async function getAccuseds(
     ),
     prisma.$queryRawUnsafe<{ count: BigInt }[]>(`SELECT COUNT(*) from accuseds_mv ${whereClause};`, ...params),
   ]);
+
+  // MV now returns previouslyInvolvedCases as { crimeId, firNumber }.
+  // Remap to { id, value } to match the GraphQL CrimeDetailsType and frontend expectations.
+  // Also coerce BigInt fields from COUNT(*) subqueries to Number for GraphQLInt.
+  for (const node of nodes) {
+    if (typeof (node as any).noOfAccusedInvolved === 'bigint') {
+      (node as any).noOfAccusedInvolved = Number((node as any).noOfAccusedInvolved);
+    }
+    if (typeof (node as any).noOfCrimes === 'bigint') {
+      (node as any).noOfCrimes = Number((node as any).noOfCrimes);
+    }
+    if (Array.isArray((node as any).previouslyInvolvedCases)) {
+      (node as any).previouslyInvolvedCases = (node as any).previouslyInvolvedCases.map(
+        (c: { crimeId: string; firNumber: string }) => ({
+          id: c.crimeId,
+          value: c.firNumber,
+        })
+      );
+    }
+  }
 
   const pageInfo = buildPageInfo(page, limit, totalCount[0].count);
 
@@ -263,6 +309,7 @@ export async function getAccusedStatistics(filters: AccusedFilterInput = {}) {
       accusedStatisticsBreakdownByAccusedStatus: [],
       accusedStatisticsBreakdownByNativeState: [],
       accusedStatisticsBreakdownByNationality: [],
+      accusedStatisticsBreakdownByAccusedRole: [],
     };
   }
 
@@ -287,60 +334,19 @@ export async function getAccusedStatistics(filters: AccusedFilterInput = {}) {
     caseStatusWise,
     caseClassWise,
     domicileWise,
+    accusedRoleWise,
   ] = await Promise.all([
     prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
       `
-        SELECT 
-          gender AS label, 
-          COUNT(*)::int AS count
-        FROM accuseds_mv
-        ${where}
-        GROUP BY gender
-        ORDER BY 
-          CASE WHEN gender = 'Unknown' THEN 1 ELSE 0 END,
-          count DESC;
-      `,
-      ...params
-    ),
-    prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
-      `
-        SELECT 
-          "permanentStateUt" AS label, 
-          COUNT(*)::int AS count
-        FROM accuseds_mv
-        ${where}
-        ${nationalityFilter}
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM(gender), ''), 'Unknown') AS label
+          FROM accuseds_mv
+          ${where}
+        ) t
         GROUP BY label
         ORDER BY 
-          CASE WHEN "permanentStateUt" = 'Unknown' THEN 1 ELSE 0 END,
-          count DESC;
-      `,
-      ...nativeStateParams
-    ),
-    prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
-      `
-        SELECT 
-          nationality AS label, 
-          COUNT(*)::int AS count
-        FROM accuseds_mv
-        ${where}
-        GROUP BY label
-        ORDER BY 
-          CASE WHEN nationality = 'Unknown' THEN 1 ELSE 0 END,
-          count DESC;
-      `,
-      ...params
-    ),
-    prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
-      `
-        SELECT
-          "accusedType" AS label,
-          COUNT(*)::int AS count
-        FROM accuseds_mv
-        ${where}
-        GROUP BY "accusedType"
-        ORDER BY
-          CASE WHEN "accusedType" = 'Unknown' THEN 1 ELSE 0 END,
+          CASE WHEN label = 'Unknown' THEN 1 ELSE 0 END,
           count DESC;
       `,
       ...params
@@ -349,8 +355,54 @@ export async function getAccusedStatistics(filters: AccusedFilterInput = {}) {
       `
         SELECT label, COUNT(*)::int AS count
         FROM (
-          SELECT 
-            CASE WHEN "accusedStatus" = 'Died' THEN 'Abated' ELSE "accusedStatus" END AS label
+          SELECT COALESCE(NULLIF(TRIM("permanentStateUt"), ''), 'Unknown') AS label
+          FROM accuseds_mv
+          ${where}
+          ${nationalityFilter}
+        ) t
+        GROUP BY label
+        ORDER BY 
+          CASE WHEN label = 'Unknown' THEN 1 ELSE 0 END,
+          count DESC;
+      `,
+      ...nativeStateParams
+    ),
+    prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
+      `
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM(nationality), ''), 'Unknown') AS label
+          FROM accuseds_mv
+          ${where}
+        ) t
+        GROUP BY label
+        ORDER BY 
+          CASE WHEN label = 'Unknown' THEN 1 ELSE 0 END,
+          count DESC;
+      `,
+      ...params
+    ),
+    prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
+      `
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM("accusedType"), ''), 'Unknown') AS label
+          FROM accuseds_mv
+          ${where}
+        ) t
+        GROUP BY label
+        ORDER BY
+          CASE WHEN label = 'Unknown' THEN 1 ELSE 0 END,
+          count DESC;
+      `,
+      ...params
+    ),
+    // UPDATED: accusedStatus is now normalized in the MV — read directly
+    prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
+      `
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM("accusedStatus"), ''), 'Unknown') AS label
           FROM accuseds_mv
           ${where}
         ) grouped
@@ -369,7 +421,7 @@ export async function getAccusedStatistics(filters: AccusedFilterInput = {}) {
         FROM (
           SELECT
             CASE
-              WHEN age = -100 THEN 'Unknown'
+              WHEN age IS NULL OR age = -100 THEN 'Unknown'
               WHEN age > 0 AND age < 18 THEN 'Juvenile'
               ELSE 'Adult'
             END AS label
@@ -385,42 +437,60 @@ export async function getAccusedStatistics(filters: AccusedFilterInput = {}) {
     ),
     prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
       `
-        SELECT 
-          "caseStatus" AS label, 
-          COUNT(*)::int AS count
-        FROM accuseds_mv
-        ${where}
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM("caseStatus"), ''), 'Unknown') AS label
+          FROM accuseds_mv
+          ${where}
+        ) t
         GROUP BY label
         ORDER BY 
-          CASE WHEN "caseStatus" = 'Unknown' THEN 1 ELSE 0 END,
+          CASE WHEN label = 'Unknown' THEN 1 ELSE 0 END,
           count DESC;
       `,
       ...params
     ),
     prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
       `
-        SELECT 
-          "caseClassification" AS label, 
-          COUNT(*)::int AS count
-        FROM accuseds_mv
-        ${where}
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM("caseClassification"), ''), 'Unknown') AS label
+          FROM accuseds_mv
+          ${where}
+        ) t
         GROUP BY label
         ORDER BY 
-          CASE WHEN "caseClassification" = 'Unknown' THEN 1 ELSE 0 END,
+          CASE WHEN label = 'Unknown' THEN 1 ELSE 0 END,
           count DESC;
       `,
       ...params
     ),
     prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
       `
-        SELECT 
-          domicile AS label, 
-          COUNT(*)::int AS count
-        FROM accuseds_mv
-        ${where}
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM(domicile), ''), 'Unknown') AS label
+          FROM accuseds_mv
+          ${where}
+        ) t
         GROUP BY label
         ORDER BY 
-          CASE WHEN domicile = 'Unknown' THEN 1 ELSE 0 END,
+          CASE WHEN label = 'Unknown' THEN 1 ELSE 0 END,
+          count DESC;
+      `,
+      ...params
+    ),
+    prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
+      `
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM("accusedRole"), ''), 'Unknown') AS label
+          FROM accuseds_mv
+          ${where}
+        ) t
+        GROUP BY label
+        ORDER BY 
+          CASE WHEN label = 'Unknown' THEN 1 ELSE 0 END,
           count DESC;
       `,
       ...params
@@ -438,6 +508,7 @@ export async function getAccusedStatistics(filters: AccusedFilterInput = {}) {
     accusedStatisticsBreakdownByAccusedStatus: accusedStatusWise,
     accusedStatisticsBreakdownByNativeState: stateWise,
     accusedStatisticsBreakdownByNationality: countryWise,
+    accusedStatisticsBreakdownByAccusedRole: accusedRoleWise,
   };
 }
 
@@ -466,8 +537,14 @@ export async function getAccusedFilterValues(filters: AccusedFilterInput = {}) {
       `SELECT DISTINCT a."caseStatus" from accuseds_mv a ${whereClause} ORDER BY a."caseStatus";`,
       ...params
     ),
+    // UPDATED: accusedStatus is now normalized in the MV — read directly
     prisma.$queryRawUnsafe<{ accusedStatus: string }[]>(
-      `SELECT DISTINCT a."accusedStatus" from accuseds_mv a ${whereClause} ORDER BY a."accusedStatus";`,
+      `
+        SELECT DISTINCT a."accusedStatus"
+        FROM accuseds_mv a
+        ${whereClause}
+        ORDER BY a."accusedStatus";
+      `,
       ...params
     ),
     prisma.$queryRawUnsafe<{ accusedType: string }[]>(
@@ -520,9 +597,12 @@ export async function getAccusedFilterValues(filters: AccusedFilterInput = {}) {
     gender: gender.map(gender => gender.gender),
     nationality: nationality.map(nationality => nationality.nationality),
     state: state.map(state => state.presentStateUt),
-    drugTypes: Array.from(new Set(drugTypes.flatMap(drugType => drugType.drugType))),
+    drugTypes: [
+      { categoryName: 'All Drugs', drugs: Array.from(new Set(drugTypes.flatMap(drugType => drugType.drugType))) },
+    ],
   };
 }
+
 type YearData = {
   totalCases: number;
   totalInvolved: number;
@@ -555,8 +635,9 @@ type AccusedStatsResponse = {
 export async function getAccusedAbstract(filters: AccusedFilterInput = {}): Promise<AccusedStatsResponse> {
   const { whereClause, params } = buildFilters(filters);
 
-  // Optimized approach: Use PostgreSQL aggregation instead of processing in JavaScript
-  // This query aggregates data at the police station + year level in a single pass
+  // UPDATED: query accuseds_mv directly using normalized "accusedStatus" values
+  // instead of firs_mv + JSONB unnesting with ILIKE patterns.
+  // totalCases uses COUNT(DISTINCT "crimeId") since accuseds_mv has one row per accused.
   const aggregatedData = await prisma.$queryRawUnsafe<
     {
       unit: string;
@@ -573,21 +654,15 @@ export async function getAccusedAbstract(filters: AccusedFilterInput = {}): Prom
       COALESCE(unit, 'Unknown Unit') AS unit,
       COALESCE(ps, 'Unknown PS') AS ps,
       COALESCE(year::text, 'Unknown Year') AS year,
-      COUNT(*)::int AS "totalCases",
-      COALESCE(SUM(JSONB_ARRAY_LENGTH("accusedDetails")), 0)::int AS "totalInvolved",
-      COALESCE(SUM(
-        (SELECT COUNT(*) FROM JSONB_ARRAY_ELEMENTS("accusedDetails") AS elem 
-         WHERE elem->>'status' = 'Arrested')
-      ), 0)::int AS "totalArrested",
-      COALESCE(SUM(
-        (SELECT COUNT(*) FROM JSONB_ARRAY_ELEMENTS("accusedDetails") AS elem 
-         WHERE elem->>'status' = 'Absconding')
-      ), 0)::int AS "totalAbsconding"
-    FROM firs_mv
+      COUNT(DISTINCT "crimeId")::int AS "totalCases",
+      COUNT(*)::int AS "totalInvolved",
+      COALESCE(SUM(CASE WHEN "accusedStatus" = 'Arrested' THEN 1 ELSE 0 END), 0)::int AS "totalArrested",
+      COALESCE(SUM(CASE WHEN "accusedStatus" = 'Absconding' THEN 1 ELSE 0 END), 0)::int AS "totalAbsconding"
+    FROM accuseds_mv
     ${whereClause}
     GROUP BY unit, ps, year
     ORDER BY unit, ps, year;
-  `,
+    `,
     ...params
   );
 

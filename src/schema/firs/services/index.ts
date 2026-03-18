@@ -1,4 +1,4 @@
-import { Firs, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { prisma } from 'datasources/prisma';
 
 import { FirFilterInput } from 'interfaces/fir';
@@ -31,10 +31,7 @@ function buildPageInfo(page: number, limit: number, total: BigInt): PageNumberPa
   };
 }
 
-function buildSorting(
-  sortKey: keyof Prisma.FirsOrderByWithRelationInput = 'crimeRegDate',
-  sortOrder: Prisma.SortOrder = 'desc'
-) {
+function buildSorting(sortKey: string = 'crimeRegDate', sortOrder: Prisma.SortOrder = 'desc') {
   const safeSortOrder = sortOrder.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
   return `ORDER BY "${sortKey}" ${safeSortOrder} NULLS LAST`;
 }
@@ -259,7 +256,7 @@ export function buildFilters(filters: FirFilterInput = {}) {
 }
 
 export async function getFir(id: string) {
-  const result = await prisma.$queryRawUnsafe<Firs[]>(`SELECT * FROM firs_mv WHERE id = $1 LIMIT 1;`, id);
+  const result = await prisma.$queryRawUnsafe<any[]>(`SELECT * FROM firs_mv WHERE id = $1 LIMIT 1;`, id);
   const fir = result[0];
 
   if (!fir) throw new ResourceNotFoundException('FIR Not Found');
@@ -269,7 +266,7 @@ export async function getFir(id: string) {
 export async function getFirs(
   page: number = 1,
   limit: number = 100,
-  sortKey: keyof Prisma.FirsOrderByWithRelationInput = 'crimeRegDate',
+  sortKey: string = 'crimeRegDate',
   sortOrder: Prisma.SortOrder = 'desc',
   filters: FirFilterInput = {}
 ) {
@@ -278,12 +275,17 @@ export async function getFirs(
   const { whereClause, params } = buildFilters(filters);
 
   const [nodes, totalCount] = await Promise.all([
-    prisma.$queryRawUnsafe<Firs[]>(
-      `SELECT * from firs_mv ${whereClause} ${sortClause} ${paginationClause};`,
-      ...params
-    ),
+    prisma.$queryRawUnsafe<any[]>(`SELECT * from firs_mv ${whereClause} ${sortClause} ${paginationClause};`, ...params),
     prisma.$queryRawUnsafe<{ count: BigInt }[]>(`SELECT COUNT(*) from firs_mv ${whereClause};`, ...params),
   ]);
+
+  // The firs_mv subquery for noOfAccusedInvolved uses COUNT(*) which Postgres returns as
+  // BigInt. GraphQLInt cannot serialize BigInt, so coerce to Number here.
+  for (const node of nodes) {
+    if (typeof node.noOfAccusedInvolved === 'bigint') {
+      node.noOfAccusedInvolved = Number(node.noOfAccusedInvolved);
+    }
+  }
 
   const pageInfo = buildPageInfo(page, limit, totalCount[0].count);
 
@@ -315,14 +317,38 @@ export async function getFirStatistics(filters: FirFilterInput = {}) {
         WITH mapped_statuses AS (
           SELECT
             CASE
-              WHEN UPPER(TRIM(f."caseStatus")) = 'UNKNOWN' THEN 'Unknown'
+              -- 1. Check terminal disposals first from the disposalDetails array
+              WHEN f."disposalDetails" IS NOT NULL AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(f."disposalDetails") elem
+                WHERE elem->>'disposalType' ILIKE '%Acquittal%'
+              ) THEN 'Acquittal'
+              WHEN f."disposalDetails" IS NOT NULL AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(f."disposalDetails") elem
+                WHERE elem->>'disposalType' ILIKE '%Convict%'
+              ) THEN 'Conviction'
+              WHEN f."disposalDetails" IS NOT NULL AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(f."disposalDetails") elem
+                WHERE elem->>'disposalType' ILIKE '%Compounded%' OR elem->>'disposalType' ILIKE '%Compromised%'
+              ) THEN 'Compounded'
+              WHEN f."disposalDetails" IS NOT NULL AND EXISTS (
+                SELECT 1 FROM jsonb_array_elements(f."disposalDetails") elem
+                WHERE elem->>'disposalType' ILIKE '%Abated%'
+                   OR elem->>'disposalType' ILIKE '%Undetect%'
+                   OR elem->>'disposalType' ILIKE '%Action Dropped%'
+                   OR elem->>'disposalType' ILIKE '%Lack of Evidence%'
+                   OR elem->>'disposalType' ILIKE '%Mistake%'
+                   OR elem->>'disposalType' ILIKE '%Civil Nature%'
+                   OR elem->>'disposalType' ILIKE '%Transferred%'
+                   OR elem->>'disposalType' ILIKE '%Any Other%'
+              ) THEN 'Police Disposal'
+              -- 2. Any remaining disposal type not matched above
+              WHEN f."disposalDetails" IS NOT NULL AND jsonb_array_length(f."disposalDetails") > 0 THEN 'Other Disposals'
+              -- 3. Active investigation/trial stages via caseStatus
               WHEN UPPER(TRIM(f."caseStatus")) IN ('UI', 'UNDER INVESTIGATION') THEN 'UI'
-              WHEN UPPER(TRIM(f."caseStatus")) IN ('CHARGESHEETED', 'CHARGESHEET CREATED') THEN 'Chargesheeted'
+              WHEN f."chargesheets" IS NOT NULL AND jsonb_array_length(f."chargesheets") > 0 THEN 'Chargesheeted'
               WHEN UPPER(TRIM(f."caseStatus")) IN ('PT', 'PENDING TRIAL') THEN 'PT'
-              WHEN UPPER(TRIM(f."caseStatus")) = 'CONVICTION' THEN 'Conviction'
-              WHEN UPPER(TRIM(f."caseStatus")) = 'ACQUITTAL' THEN 'Acquittal'
-              WHEN UPPER(TRIM(f."caseStatus")) IN ('COMPOUNDED', 'COMPROMISED') THEN 'Compounded'
-              WHEN UPPER(TRIM(f."caseStatus")) IN ('ABATED', 'UNDETECTED', 'ACTION DROPPED', 'MISTAKE OF FACT', 'ACTION ABATED', 'LACK OF EVIDENCE', 'MISTAKE OF LAW') THEN 'Police Disposal'
+              -- 4. Unknown / fallback
+              WHEN UPPER(TRIM(f."caseStatus")) = 'UNKNOWN' THEN 'Unknown'
               ELSE 'Other Disposals'
             END AS "mappedLabel"
           FROM firs_mv f
@@ -350,13 +376,14 @@ export async function getFirStatistics(filters: FirFilterInput = {}) {
     ),
     prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
       `
-        SELECT 
-          "caseClassification" AS label, 
-          COUNT(*)::int AS count
-        FROM firs_mv
-        ${where} ${where ? 'AND' : 'WHERE'} UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION')
-        GROUP BY "caseClassification"
-        ORDER BY CASE "caseClassification"
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM("caseClassification"), ''), 'Unknown') AS label
+          FROM firs_mv
+          ${where} ${where ? 'AND' : 'WHERE'} UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION')
+        ) t
+        GROUP BY label
+        ORDER BY CASE label
           WHEN 'Commercial' THEN 1
           WHEN 'Intermediate' THEN 2
           WHEN 'Small' THEN 3
@@ -369,13 +396,14 @@ export async function getFirStatistics(filters: FirFilterInput = {}) {
     ),
     prisma.$queryRawUnsafe<{ label: string; count: number }[]>(
       `
-        SELECT 
-          "caseClassification" AS label, 
-          COUNT(*)::int AS count
-        FROM firs_mv
-        ${where} ${where ? 'AND' : 'WHERE'} UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL')
-        GROUP BY "caseClassification"
-        ORDER BY CASE "caseClassification"
+        SELECT label, COUNT(*)::int AS count
+        FROM (
+          SELECT COALESCE(NULLIF(TRIM("caseClassification"), ''), 'Unknown') AS label
+          FROM firs_mv
+          ${where} ${where ? 'AND' : 'WHERE'} UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL')
+        ) t
+        GROUP BY label
+        ORDER BY CASE label
           WHEN 'Commercial' THEN 1
           WHEN 'Intermediate' THEN 2
           WHEN 'Small' THEN 3
@@ -443,7 +471,9 @@ export async function getFirFilterValues(filters: FirFilterInput = {}) {
     ps: ps.map(ps => ps.ps),
     years: years.map(year => year.year),
     units: units.map(unit => unit.unit),
-    drugTypes: Array.from(new Set(drugTypes.flatMap(drugType => drugType.drugType))),
+    drugTypes: [
+      { categoryName: 'All Drugs', drugs: Array.from(new Set(drugTypes.flatMap(drugType => drugType.drugType))) },
+    ],
   };
 }
 
@@ -472,7 +502,7 @@ export async function getUiPtCasesStatistics(
 ): Promise<CrimeStatsOutput> {
   // fetch all necessary data joined properly
   const { whereClause, params } = buildFilters({ caseStatus: [caseStatus], years, drugTypes });
-  const rows = await prisma.$queryRawUnsafe<Firs[]>(`SELECT * from firs_mv ${whereClause};`, ...params);
+  const rows = await prisma.$queryRawUnsafe<any[]>(`SELECT * from firs_mv ${whereClause};`, ...params);
 
   // Initialize maps
   const psCounts = new Map<string, number>(); // ps_name -> count
@@ -621,10 +651,10 @@ export async function getFirsAbstract(filters: FirFilterInput = {}): Promise<Cri
       COUNT(*)::int AS total,
       COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION'))::int AS "underInvestigation",
       COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL'))::int AS "pendingInTrial",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('CHARGESHEETED', 'CHARGESHEET CREATED'))::int AS chargesheeted,
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) = 'DISPOSED')::int AS disposed,
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) = 'ACQUITTAL')::int AS acquittal,
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) = 'CONVICTION')::int AS conviction,
+      SUM(CASE WHEN "chargesheets" IS NOT NULL AND jsonb_array_length("chargesheets") > 0 THEN 1 ELSE 0 END)::int AS chargesheeted,
+      COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' NOT ILIKE '%Acquittal%' AND elem->>'disposalType' NOT ILIKE '%Convict%') THEN id END)::int AS disposed,
+      COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Acquittal%') THEN id END)::int AS acquittal,
+      COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Convict%') THEN id END)::int AS conviction,
       COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION') AND UPPER(TRIM("caseClassification")) = 'COMMERCIAL')::int AS "uiCommercialQuantity",
       COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION') AND UPPER(TRIM("caseClassification")) = 'INTERMEDIATE')::int AS "uiIntermediateQuantity",
       COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION') AND UPPER(TRIM("caseClassification")) = 'SMALL')::int AS "uiSmallQuantity",

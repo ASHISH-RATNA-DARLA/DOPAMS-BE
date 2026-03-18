@@ -1,0 +1,179 @@
+======================================================================
+OLD SCHEMA TABLES (43)
+======================================================================
+  - accused
+  - agent_deduplication_tracker
+  - arrests
+  - brief_facts_accused
+  - brief_facts_crime_summaries
+  - brief_facts_drug
+  - brief_facts_drugs
+  - charge_sheet_updates
+  - chargesheet_accused
+  - chargesheet_acts
+  - chargesheet_files
+  - chargesheets
+  - crimes
+  - dedup_cluster_state
+  - dedup_comparison_progress
+  - dedup_comparison_progress_backup
+  - dedup_run_metadata
+  - disposal
+  - files
+  - fsl_case_property
+  - fsl_case_property_media
+  - hierarchy
+  - interrogation_reports
+  - ir_associate_details
+  - ir_consumer_details
+  - ir_defence_counsel
+  - ir_dopams_links
+  - ir_family_history
+  - ir_financial_history
+  - ir_interrogation_report_refs
+  - ir_local_contacts
+  - ir_media
+  - ir_modus_operandi
+  - ir_previous_offences_confessed
+  - ir_regular_habits
+  - ir_shelter
+  - ir_sim_details
+  - ir_types_of_drugs
+  - mo_seizures
+  - old_interragation_report
+  - person_deduplication_tracker
+  - persons
+  - properties
+
+======================================================================
+NEW SCHEMA TABLES (47)
+======================================================================
+  - accused
+  - agent_deduplication_tracker
+  - arrests
+  - brief_facts_accused
+  - brief_facts_crime_summaries
+  - brief_facts_drug
+  - charge_sheet_updates
+  - chargesheet_accused
+  - chargesheet_acts
+  - chargesheet_files
+  - chargesheets
+  - crimes
+  - dedup_cluster_state
+  - dedup_comparison_progress
+  - dedup_run_metadata
+  - disposal
+  - drug_categories
+  - drug_ignore_list
+  - files
+  - fsl_case_property
+  - fsl_case_property_media
+  - geo_countries
+  - geo_reference
+  - hierarchy
+  - interrogation_reports
+  - ir_associate_details
+  - ir_consumer_details
+  - ir_defence_counsel
+  - ir_dopams_links
+  - ir_family_history
+  - ir_financial_history
+  - ir_interrogation_report_refs
+  - ir_local_contacts
+  - ir_media
+  - ir_modus_operandi
+  - ir_pending_fk
+  - ir_previous_offences_confessed
+  - ir_regular_habits
+  - ir_shelter
+  - ir_sim_details
+  - ir_types_of_drugs
+  - mo_seizures
+  - old_interragation_report
+  - person_deduplication_tracker
+  - persons
+  - properties
+  - properties_pending_fk
+
+======================================================================
+TABLES REMOVED
+======================================================================
+  - brief_facts_drugs
+  - dedup_comparison_progress_backup
+
+======================================================================
+TABLES ADDED
+======================================================================
+  + drug_categories
+  + drug_ignore_list
+  + geo_countries
+  + geo_reference
+  + ir_pending_fk
+  + properties_pending_fk
+
+======================================================================
+COLUMN CHANGES IN SHARED TABLES
+======================================================================
+
+[TABLE: accused]
+  ADDED COLUMNS:
+    + accused_status
+  MODIFIED COLUMNS:
+    ~ date_modified
+      OLD: date_modified timestamp without time zone
+      NEW: date_modified timestamp without time zone,
+
+[TABLE: brief_facts_accused]
+  MODIFIED COLUMNS:
+    ~ status
+      OLD: status character varying(40),
+      NEW: status text,
+
+[TABLE: brief_facts_drug]
+  REMOVED COLUMNS:
+    - drug_name
+    - packaging_details
+    - primary_unit_type
+    - quantity_numeric
+    - quantity_unit
+    - standardized_count
+    - standardized_quantity_kg
+    - standardized_unit
+    - standardized_volume_ml
+    - standardized_weight_kg
+  ADDED COLUMNS:
+    + accused_id
+    + count_total
+    + raw_drug_name
+    + raw_quantity
+    + raw_unit
+    + updated_at
+    + volume_l
+    + volume_ml
+    + weight_g
+    + weight_kg
+  MODIFIED COLUMNS:
+    ~ confidence_score
+      OLD: confidence_score integer,
+      NEW: confidence_score numeric(3,2),
+    ~ created_at
+      OLD: created_at timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+      NEW: created_at timestamp with time zone DEFAULT now(),
+    ~ crime_id
+      OLD: crime_id character varying,
+      NEW: crime_id character varying(50) NOT NULL,
+    ~ drug_form
+      OLD: drug_form character varying(50),
+      NEW: drug_form text,
+    ~ primary_drug_name
+      OLD: primary_drug_name character varying(255)
+      NEW: primary_drug_name text NOT NULL,
+
+[TABLE: crimes]
+  ADDED COLUMNS:
+    + additional_json_data
+  MODIFIED COLUMNS:
+    ~ fir_copy
+      OLD: fir_copy character varying(50)
+      NEW: fir_copy character varying(50),

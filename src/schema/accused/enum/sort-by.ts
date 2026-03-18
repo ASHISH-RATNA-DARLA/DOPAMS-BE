@@ -31,7 +31,11 @@ const AccusedSortByEnumType = new GraphQLEnumType({
     nose: { value: 'nose' },
     teeth: { value: 'teeth' },
     accusedStatus: { value: 'accusedStatus' },
+    // NEW: raw un-normalized status string
+    accusedStatusRaw: { value: 'accusedStatusRaw' },
     accusedType: { value: 'accusedType' },
+    // NEW: role in crime (peddler, supplier, etc.) from brief_facts_accused
+    accusedRole: { value: 'accusedRole' },
     noOfAccusedInvolved: { value: 'noOfAccusedInvolved' },
     accusedDetails: { value: 'accusedDetails' },
     parentage: { value: 'parentage' },
@@ -40,6 +44,8 @@ const AccusedSortByEnumType = new GraphQLEnumType({
     isDied: { value: 'isDied' },
     dateOfBirth: { value: 'dateOfBirth' },
     age: { value: 'age' },
+    // NEW: domicile classification (Local/Outsider/Foreign) is now a direct column in the MV
+    domicile: { value: 'domicile' },
     occupation: { value: 'occupation' },
     educationQualification: { value: 'educationQualification' },
     caste: { value: 'caste' },

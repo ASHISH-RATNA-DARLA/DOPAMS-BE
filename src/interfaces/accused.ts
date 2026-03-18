@@ -36,4 +36,7 @@ export interface AccusedFilterInput {
   caseClass?: string[];
   accusedStatus?: string[];
   accusedType?: string[];
+  // NEW: filter by role in crime (peddler, supplier, transporter, etc.)
+  // Maps to brief_facts_accused.accused_type via the "accusedRole" column in accuseds_mv
+  accusedRole?: string[];
 }

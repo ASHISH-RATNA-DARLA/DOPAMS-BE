@@ -205,7 +205,7 @@ export const CriminalProfileType = new GraphQLObjectType({
     relativeName: { type: GraphQLString },
     gender: { type: GraphQLString },
     isDied: { type: GraphQLBoolean },
-    dateOfBirth: { type: GraphQLString }, // ISO date string
+    dateOfBirth: { type: GraphQLString },
     age: { type: GraphQLInt },
     occupation: { type: GraphQLString },
     educationQualification: { type: GraphQLString },
@@ -243,9 +243,45 @@ export const CriminalProfileType = new GraphQLObjectType({
     phoneNumber: { type: GraphQLString },
     countryCode: { type: GraphQLString },
     emailId: { type: GraphQLString },
-    identityDocuments: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(IdentityDocumentType))) },
-    documents: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DocumentType))) },
-    crimes: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(CrimeType))) },
+    // identityDocuments: new schema returns {id, identityType, identityNumber, filePath}
+    // mapped to the existing IdentityDocumentType with field resolvers below
+    identityDocuments: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(IdentityDocumentType))),
+      resolve: profile => {
+        if (!profile.identityDocuments) return [];
+        const docs =
+          typeof profile.identityDocuments === 'string'
+            ? JSON.parse(profile.identityDocuments)
+            : profile.identityDocuments;
+        // Map new schema shape {id, identityType, identityNumber, filePath} →
+        // GraphQL shape {type, link, identityType, identityNumber}
+        return (docs ?? []).map((doc: any) => ({
+          type: doc.source_field ?? 'IDENTITY_DETAILS',
+          link: doc.filePath ?? doc.file_path ?? doc.link ?? '',
+          identityType: doc.identityType ?? doc.identity_type ?? null,
+          identityNumber: doc.identityNumber ?? doc.identity_number ?? null,
+        }));
+      },
+    },
+    documents: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DocumentType))),
+      resolve: profile => {
+        if (!profile.documents) return [];
+        const docs = typeof profile.documents === 'string' ? JSON.parse(profile.documents) : profile.documents;
+        // Map new schema shape {id, filePath} → DocumentType shape {link, name}
+        return (docs ?? []).map((doc: any) => ({
+          link: doc.filePath ?? doc.file_path ?? doc.link ?? '',
+          name: doc.name ?? doc.notes ?? null,
+        }));
+      },
+    },
+    // crimes: new schema only has {id, firNumber, crimeRegDate} in criminal_profiles_mv.
+    // Full crime details (ps, unit, caseStatus, chargesheets, etc.) are fetched from
+    // accuseds_mv by the service layer and merged here.
+    crimes: {
+      type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(CrimeType))),
+      resolve: profile => profile.crimes ?? [],
+    },
     associatedDrugs: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     latestCrimeNo: { type: GraphQLString },
     latestCrimeId: { type: GraphQLString },

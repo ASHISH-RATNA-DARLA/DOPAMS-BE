@@ -27,7 +27,7 @@ export async function getSeizuresFilterValues(filters: FirFilterInput = {}) {
       `SELECT DISTINCT 
         CASE 
           WHEN NULLIF(TRIM(primary_drug_name), 'NO_DRUGS_DETECTED') IS NULL THEN 'Unknown'
-          ELSE TRIM(primary_drug_name)
+          ELSE UPPER(TRIM(primary_drug_name))
         END as "drugType" 
       FROM brief_facts_drug 
       WHERE primary_drug_name IS NOT NULL ${drugTypeWhereClause} 
@@ -39,7 +39,12 @@ export async function getSeizuresFilterValues(filters: FirFilterInput = {}) {
   return {
     units: units.map(unit => unit.unit),
     years: years.map(year => year.year),
-    drugTypes: Array.from(new Set(drugTypes.map(drugType => drugType.drugType))),
+    drugTypes: [
+      {
+        categoryName: 'All Drugs',
+        drugs: Array.from(new Set(drugTypes.map(drugType => drugType.drugType))),
+      },
+    ],
   };
 }
 
@@ -84,7 +89,7 @@ export async function getSeizuresStatistics(filters: FirFilterInput = {}) {
           SELECT
             CASE
               WHEN NULLIF(TRIM(primary_drug_name), 'NO_DRUGS_DETECTED') IS NULL THEN 'Unknown'
-              ELSE TRIM(primary_drug_name)
+              ELSE UPPER(TRIM(primary_drug_name))
             END AS "label",
             COUNT(DISTINCT crime_id)::int AS "count"
           FROM
@@ -95,7 +100,7 @@ export async function getSeizuresStatistics(filters: FirFilterInput = {}) {
           GROUP BY
             CASE
               WHEN NULLIF(TRIM(primary_drug_name), 'NO_DRUGS_DETECTED') IS NULL THEN 'Unknown'
-              ELSE TRIM(primary_drug_name)
+              ELSE UPPER(TRIM(primary_drug_name))
             END
         ),
         others_sum AS (
@@ -149,7 +154,7 @@ export async function getSeizuresStatistics(filters: FirFilterInput = {}) {
 type YearData = {
   totalCases: number;
   totalQuantityKg: number;
-  totalQuantityMl: number;
+  totalQuantityL: number;
   totalQuantityCount: number;
   totalWorth: number;
 };
@@ -189,7 +194,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
         year: string;
         totalCases: number;
         totalQuantityKg: string;
-        totalQuantityMl: string;
+        totalQuantityL: string;
         totalQuantityCount: string;
         totalWorth: string;
       }[]
@@ -198,14 +203,14 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
         SELECT
           CASE 
             WHEN NULLIF(TRIM(bfd.primary_drug_name), 'NO_DRUGS_DETECTED') IS NULL THEN 'Unknown'
-            ELSE TRIM(bfd.primary_drug_name)
+            ELSE UPPER(TRIM(bfd.primary_drug_name))
           END AS "drugName",
           COALESCE(fmv.year::text, 'Unknown Year') AS year,
           COUNT(DISTINCT bfd.crime_id)::int AS "totalCases",
-          COALESCE(ROUND(SUM(bfd.standardized_weight_kg)), 0)::text AS "totalQuantityKg",
-          COALESCE(ROUND(SUM(bfd.standardized_volume_ml)), 0)::text AS "totalQuantityMl",
-          COALESCE(ROUND(SUM(bfd.standardized_count)), 0)::text AS "totalQuantityCount",
-          COALESCE(ROUND(SUM(bfd.seizure_worth * 10000000)), 0)::text AS "totalWorth"
+          COALESCE(TRUNC(SUM(bfd.weight_kg), 2), 0)::text AS "totalQuantityKg",
+          COALESCE(TRUNC(SUM(bfd.volume_l), 2), 0)::text AS "totalQuantityL",
+          COALESCE(TRUNC(SUM(bfd.count_total), 2), 0)::text AS "totalQuantityCount",
+          COALESCE(TRUNC(SUM(bfd.seizure_worth), 2), 0)::text AS "totalWorth"
         FROM brief_facts_drug bfd
         INNER JOIN firs_mv fmv ON fmv.id = bfd.crime_id
         ${whereClause}
@@ -220,7 +225,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
         year: string;
         totalCases: number;
         totalQuantityKg: string;
-        totalQuantityMl: string;
+        totalQuantityL: string;
         totalQuantityCount: string;
         totalWorth: string;
       }[]
@@ -229,10 +234,10 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
         SELECT
           COALESCE(fmv.year::text, 'Unknown Year') AS year,
           COUNT(DISTINCT bfd.crime_id)::int AS "totalCases",
-          COALESCE(ROUND(SUM(bfd.standardized_weight_kg)), 0)::text AS "totalQuantityKg",
-          COALESCE(ROUND(SUM(bfd.standardized_volume_ml)), 0)::text AS "totalQuantityMl",
-          COALESCE(ROUND(SUM(bfd.standardized_count)), 0)::text AS "totalQuantityCount",
-          COALESCE(ROUND(SUM(bfd.seizure_worth * 10000000)), 0)::text AS "totalWorth"
+          COALESCE(TRUNC(SUM(bfd.weight_kg), 2), 0)::text AS "totalQuantityKg",
+          COALESCE(TRUNC(SUM(bfd.volume_l), 2), 0)::text AS "totalQuantityL",
+          COALESCE(TRUNC(SUM(bfd.count_total), 2), 0)::text AS "totalQuantityCount",
+          COALESCE(TRUNC(SUM(bfd.seizure_worth), 2), 0)::text AS "totalWorth"
         FROM brief_facts_drug bfd
         INNER JOIN firs_mv fmv ON fmv.id = bfd.crime_id
         ${whereClause}
@@ -268,7 +273,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
         drugName: row.drugName,
         drugIndex: globalDrugIndex++,
         yearData: new Map(),
-        totals: { totalCases: 0, totalQuantityKg: 0, totalQuantityMl: 0, totalQuantityCount: 0, totalWorth: 0 },
+        totals: { totalCases: 0, totalQuantityKg: 0, totalQuantityL: 0, totalQuantityCount: 0, totalWorth: 0 },
       });
     }
     const drug = drugMap.get(row.drugName)!;
@@ -277,7 +282,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
     const yearData: YearData = {
       totalCases: row.totalCases,
       totalQuantityKg: Number(row.totalQuantityKg),
-      totalQuantityMl: Number(row.totalQuantityMl),
+      totalQuantityL: Number(row.totalQuantityL),
       totalQuantityCount: Number(row.totalQuantityCount),
       totalWorth: Number(row.totalWorth),
     };
@@ -286,7 +291,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
     // Update drug totals
     drug.totals.totalCases += row.totalCases;
     drug.totals.totalQuantityKg += Number(row.totalQuantityKg);
-    drug.totals.totalQuantityMl += Number(row.totalQuantityMl);
+    drug.totals.totalQuantityL += Number(row.totalQuantityL);
     drug.totals.totalQuantityCount += Number(row.totalQuantityCount);
     drug.totals.totalWorth += Number(row.totalWorth);
   }
@@ -298,7 +303,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
   const summaryTotals: YearData = {
     totalCases: 0,
     totalQuantityKg: 0,
-    totalQuantityMl: 0,
+    totalQuantityL: 0,
     totalQuantityCount: 0,
     totalWorth: 0,
   };
@@ -308,7 +313,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
     summaryTotalsByYear.set(y, {
       totalCases: 0,
       totalQuantityKg: 0,
-      totalQuantityMl: 0,
+      totalQuantityL: 0,
       totalQuantityCount: 0,
       totalWorth: 0,
     });
@@ -332,7 +337,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
     // Aggregate into summary totals - Note: These are now superseded by grandSummaryRows for the summary row itself
     summaryTotals.totalCases += drug.totals.totalCases;
     summaryTotals.totalQuantityKg += drug.totals.totalQuantityKg;
-    summaryTotals.totalQuantityMl += drug.totals.totalQuantityMl;
+    summaryTotals.totalQuantityL += drug.totals.totalQuantityL;
     summaryTotals.totalQuantityCount += drug.totals.totalQuantityCount;
     summaryTotals.totalWorth += drug.totals.totalWorth;
   }
@@ -343,7 +348,7 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
     if (summaryYear) {
       summaryYear.totalCases = row.totalCases;
       summaryYear.totalQuantityKg = Number(row.totalQuantityKg);
-      summaryYear.totalQuantityMl = Number(row.totalQuantityMl);
+      summaryYear.totalQuantityL = Number(row.totalQuantityL);
       summaryYear.totalQuantityCount = Number(row.totalQuantityCount);
       summaryYear.totalWorth = Number(row.totalWorth);
     }
@@ -352,14 +357,14 @@ export async function getSeizuresAbstract(filters: FirFilterInput = {}): Promise
   // Recalculate global summary totals from the accurate year-wise summary totals
   summaryTotals.totalCases = 0;
   summaryTotals.totalQuantityKg = 0;
-  summaryTotals.totalQuantityMl = 0;
+  summaryTotals.totalQuantityL = 0;
   summaryTotals.totalQuantityCount = 0;
   summaryTotals.totalWorth = 0;
 
   for (const data of summaryTotalsByYear.values()) {
     summaryTotals.totalCases += data.totalCases;
     summaryTotals.totalQuantityKg += data.totalQuantityKg;
-    summaryTotals.totalQuantityMl += data.totalQuantityMl;
+    summaryTotals.totalQuantityL += data.totalQuantityL;
     summaryTotals.totalQuantityCount += data.totalQuantityCount;
     summaryTotals.totalWorth += data.totalWorth;
   }

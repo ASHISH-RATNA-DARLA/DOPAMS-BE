@@ -10,7 +10,8 @@ import {
 
 import { PaginationType } from 'schema/pagination/pagination';
 import { StatisticsListType } from 'schema/misc/statistics';
-import { DrugDetailsType } from 'schema/firs';
+import { DrugDetailsType, DisposalDetailsType } from 'schema/firs';
+import { DrugTypeGroupType } from 'schema/firs/seizures';
 
 export const AccusedType = new GraphQLObjectType({
   name: 'AccusedType',
@@ -41,21 +42,28 @@ export const AccusedType = new GraphQLObjectType({
     mustache: { type: GraphQLString },
     nose: { type: GraphQLString },
     teeth: { type: GraphQLString },
+    // accusedStatus is now a normalized value from the MV:
+    // 'Arrested' | 'Absconding' | 'Issued Notice' | 'Unknown'
     accusedStatus: { type: GraphQLString },
+    // accusedStatusRaw is the raw, un-normalized status string from the source data
+    accusedStatusRaw: { type: GraphQLString }, // NEW
     accusedType: { type: GraphQLString },
+    // accusedRole is the role in the crime (peddler, supplier, transporter, etc.)
+    // sourced from brief_facts_accused.accused_type via the MV
+    accusedRole: { type: GraphQLString }, // NEW
     noOfAccusedInvolved: { type: GraphQLInt },
     fullName: { type: GraphQLString },
-    accusedDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(CrimeDetailsType))) },
+    accusedDetails: { type: new GraphQLList(new GraphQLNonNull(CrimeDetailsType)) },
     personId: { type: GraphQLString },
     parentage: { type: GraphQLString },
-    relativeType: { type: GraphQLString },
+    relationType: { type: GraphQLString },
     gender: { type: GraphQLString },
     isDied: { type: GraphQLBoolean },
     dateOfBirth: { type: GraphQLString },
     age: { type: GraphQLInt },
     domicile: { type: GraphQLString },
     occupation: { type: GraphQLString },
-    educationQualification: { type: GraphQLBoolean },
+    educationQualification: { type: GraphQLString },
     caste: { type: GraphQLString },
     subCaste: { type: GraphQLString },
     religion: { type: GraphQLString },
@@ -90,10 +98,13 @@ export const AccusedType = new GraphQLObjectType({
     countryCode: { type: GraphQLString },
     emailId: { type: GraphQLString },
     noOfCrimes: { type: GraphQLInt },
-    previouslyInvolvedCases: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(CrimeDetailsType))) },
-    drugWithQuantity: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DrugDetailsType))) },
+    previouslyInvolvedCases: { type: new GraphQLList(new GraphQLNonNull(CrimeDetailsType)) },
+    drugWithQuantity: { type: new GraphQLList(new GraphQLNonNull(DrugDetailsType)) },
     caseClassification: { type: GraphQLString },
     caseStatus: { type: GraphQLString },
+    presentAddress: { type: GraphQLString },
+    permanentAddress: { type: GraphQLString },
+    disposalDetails: { type: new GraphQLList(new GraphQLNonNull(DisposalDetailsType)) },
   }),
 });
 
@@ -126,6 +137,7 @@ export const AccusedStatisticsType = new GraphQLObjectType({
     accusedStatisticsBreakdownByAccusedStatus: { type: new GraphQLNonNull(StatisticsListType) },
     accusedStatisticsBreakdownByNationality: { type: new GraphQLNonNull(StatisticsListType) },
     accusedStatisticsBreakdownByNativeState: { type: new GraphQLNonNull(StatisticsListType) },
+    accusedStatisticsBreakdownByAccusedRole: { type: new GraphQLNonNull(StatisticsListType) },
   }),
 });
 
@@ -143,7 +155,7 @@ export const AccusedFilterValuesType = new GraphQLObjectType({
     gender: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     nationality: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     state: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
-    drugTypes: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
+    drugTypes: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DrugTypeGroupType))) },
   }),
 });
 
