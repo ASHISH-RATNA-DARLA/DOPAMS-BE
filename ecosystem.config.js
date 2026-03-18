@@ -2,16 +2,16 @@ module.exports = {
   apps: [
     {
       name: 'dopams-backend',
-      script: './build/src/server.js',
+      script: './src/server.ts',
       instances: 'max',
       exec_mode: 'cluster',
+      interpreter: 'tsx',
+      interpreter_args: 'watch',
+      env_file: '.env',
       env: {
         NODE_ENV: 'production',
-        PORT: 8082
-      },
-      env_development: {
-        NODE_ENV: 'development',
-        PORT: 8082
+        PORT: 8082,
+        NODE_PATH: './src'
       },
       error_file: './logs/pm2-error.log',
       out_file: './logs/pm2-out.log',
