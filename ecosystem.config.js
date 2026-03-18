@@ -5,8 +5,8 @@ module.exports = {
       script: './src/server.ts',
       instances: 'max',
       exec_mode: 'cluster',
-      interpreter: 'tsx',
-      interpreter_args: 'watch',
+      interpreter: 'npx',
+      interpreter_args: 'tsx',
       env_file: '.env',
       env: {
         NODE_ENV: 'production',
