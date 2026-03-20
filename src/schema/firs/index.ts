@@ -113,6 +113,11 @@ const AccusedDetailsType = new GraphQLObjectType({
   fields: () => ({
     id: { type: GraphQLID },
     value: { type: GraphQLString },
+    fullName: { type: GraphQLString },
+    personCode: { type: GraphQLString },
+    accusedType: { type: GraphQLString },
+    status: { type: GraphQLString },
+    alias: { type: GraphQLString },
   }),
 });
 
@@ -150,6 +155,7 @@ const ChargesheetType = new GraphQLObjectType({
     chargesheetNo: { type: GraphQLString },
     chargesheetNoIcjs: { type: GraphQLString },
     chargesheetDate: { type: GraphQLString },
+    chargeSheetDate: { type: GraphQLString },
     chargesheetType: { type: GraphQLString },
     courtName: { type: GraphQLString },
     isCcl: { type: GraphQLBoolean },
@@ -167,6 +173,7 @@ const ChargesheetUpdateType = new GraphQLObjectType({
     id: { type: GraphQLID },
     updateChargeSheetId: { type: GraphQLString },
     chargeSheetNo: { type: GraphQLString },
+    chargesheetDate: { type: GraphQLString },
     chargeSheetDate: { type: GraphQLString },
     chargeSheetStatus: { type: GraphQLString },
     takenOnFileDate: { type: GraphQLString },
@@ -234,6 +241,7 @@ export const DrugDetailsType = new GraphQLObjectType({
   name: 'DrugDetailsType',
   fields: () => ({
     name: { type: GraphQLString },
+    quantity: { type: GraphQLString },
     quantityKg: { type: GraphQLString },
     quantityMl: { type: GraphQLString },
     quantityCount: { type: GraphQLString },

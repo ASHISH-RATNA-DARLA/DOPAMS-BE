@@ -2,12 +2,12 @@
 -- PostgreSQL database dump
 --
 
-\restrict xYGJqQ5CMT2BF5dy4hjcu3TvewdvQZYkCzObLJnhRTd9kdbgaHW7WeiMDzPhizt
+\restrict x5rZZscgYowRqoD4VLi9B5dCWvIdYU9dGAQk7hyOUHKmonVjgTbwb0hDwbvF7N0
 
 -- Dumped from database version 16.11 (Ubuntu 16.11-1.pgdg24.04+1)
 -- Dumped by pg_dump version 17.6
 
--- Started on 2026-03-17 20:55:55
+-- Started on 2026-03-20 16:44:16
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -697,7 +697,7 @@ COMMENT ON TABLE public.persons IS 'Personal details of individuals (accused, vi
 
 
 --
--- TOC entry 311 (class 1259 OID 30835373)
+-- TOC entry 310 (class 1259 OID 30835373)
 -- Name: accuseds_mv; Type: MATERIALIZED VIEW; Schema: public; Owner: dev_dopamas
 --
 
@@ -835,7 +835,7 @@ CREATE MATERIALIZED VIEW public.accuseds_mv AS
 ALTER MATERIALIZED VIEW public.accuseds_mv OWNER TO dev_dopamas;
 
 --
--- TOC entry 308 (class 1259 OID 30029975)
+-- TOC entry 307 (class 1259 OID 30029975)
 -- Name: advanced_search_accuseds_mv; Type: MATERIALIZED VIEW; Schema: public; Owner: dev_dopamas
 --
 
@@ -988,7 +988,7 @@ CREATE VIEW public.advanced_search_firs AS
 ALTER VIEW public.advanced_search_firs OWNER TO dev_dopamas;
 
 --
--- TOC entry 309 (class 1259 OID 30054433)
+-- TOC entry 308 (class 1259 OID 30054433)
 -- Name: advanced_search_firs_mv; Type: MATERIALIZED VIEW; Schema: public; Owner: dev_dopamas
 --
 
@@ -1528,7 +1528,7 @@ COMMENT ON COLUMN public.files.created_at IS 'Timestamp from API (DATE_CREATED o
 
 
 --
--- TOC entry 310 (class 1259 OID 30060315)
+-- TOC entry 309 (class 1259 OID 30060315)
 -- Name: criminal_profiles_mv; Type: MATERIALIZED VIEW; Schema: public; Owner: dev_dopamas
 --
 
@@ -2175,7 +2175,7 @@ COMMENT ON COLUMN public.properties.media IS 'JSONB array of media attachments';
 
 
 --
--- TOC entry 307 (class 1259 OID 29985053)
+-- TOC entry 311 (class 1259 OID 31899683)
 -- Name: firs_mv; Type: MATERIALIZED VIEW; Schema: public; Owner: dev_dopamas
 --
 
@@ -2196,25 +2196,41 @@ CREATE MATERIALIZED VIEW public.firs_mv AS
     c.io_rank AS "ioRank",
     c.brief_facts AS "briefFacts",
     ( SELECT count(*) AS count
-           FROM public.accused a3
-          WHERE ((a3.crime_id)::text = (c.crime_id)::text)) AS "noOfAccusedInvolved",
-    ( SELECT jsonb_agg(jsonb_build_object('name', p.name, 'surname', p.surname, 'alias', p.alias, 'fullName', p.full_name, 'status', COALESCE(bfa.status, a.accused_status, 'Unknown'::text), 'email', p.email_id)) AS jsonb_agg
-           FROM ((public.accused a
-             LEFT JOIN public.persons p ON (((a.person_id)::text = (p.person_id)::text)))
-             LEFT JOIN public.brief_facts_accused bfa ON (((a.accused_id)::text = (bfa.accused_id)::text)))
-          WHERE ((a.crime_id)::text = (c.crime_id)::text)) AS "accusedDetails",
+           FROM public.brief_facts_accused bfa
+          WHERE ((bfa.crime_id)::text = (c.crime_id)::text)) AS "noOfAccusedInvolved",
+    ( SELECT jsonb_agg(jsonb_build_object('personCode', bfa.person_code, 'fullName', bfa.full_name, 'alias', bfa.alias_name, 'accusedType', bfa.accused_type, 'status',
+                CASE
+                    WHEN ((bfa.status ~~* 'Arrest%'::text) AND (bfa.status !~~* 'Arrest Related%'::text)) THEN 'Arrested'::text
+                    WHEN (bfa.status ~~* 'Surrendered%'::text) THEN 'Arrested'::text
+                    WHEN (bfa.status ~~* 'Absconding'::text) THEN 'Absconding'::text
+                    WHEN (bfa.status ~~* 'Arrest Related/41A CrPC Pending'::text) THEN 'Absconding'::text
+                    WHEN (bfa.status ~~* '41A Cr.P.C%'::text) THEN 'Issued Notice'::text
+                    WHEN (bfa.status ~~* 'High court directions%'::text) THEN 'Issued Notice'::text
+                    ELSE 'Unknown'::text
+                END) ORDER BY bfa.seq_num) AS jsonb_agg
+           FROM public.brief_facts_accused bfa
+          WHERE ((bfa.crime_id)::text = (c.crime_id)::text)) AS "accusedDetails",
     ( SELECT jsonb_agg(DISTINCT jsonb_build_object('type', p2.category, 'value', p2.estimate_value)) AS jsonb_agg
            FROM public.properties p2
           WHERE ((p2.crime_id)::text = (c.crime_id)::text)) AS "propertyDetails",
     ( SELECT jsonb_agg(DISTINCT jsonb_build_object('type', mo.type, 'quantity', mo.description)) AS jsonb_agg
            FROM public.mo_seizures mo
           WHERE ((mo.crime_id)::text = (c.crime_id)::text)) AS "moSeizuresDetails",
-    ( SELECT COALESCE(array_agg(DISTINCT upper(TRIM(BOTH FROM bfd.primary_drug_name))) FILTER (WHERE ((bfd.primary_drug_name IS NOT NULL) AND (bfd.primary_drug_name <> 'NO_DRUGS_DETECTED'::text))), ARRAY[]::text[]) AS "coalesce"
-           FROM public.brief_facts_drug bfd
-          WHERE ((bfd.crime_id)::text = (c.crime_id)::text)) AS "drugType",
-    ( SELECT jsonb_agg(jsonb_build_object('name', bfd2.primary_drug_name, 'quantityKg', COALESCE(bfd2.weight_kg, (0)::numeric), 'quantityMl', COALESCE(bfd2.volume_ml, (0)::numeric), 'quantityCount', COALESCE(bfd2.count_total, (0)::numeric), 'worth', COALESCE(bfd2.seizure_worth, (0)::numeric)) ORDER BY bfd2.created_at) AS jsonb_agg
-           FROM public.brief_facts_drug bfd2
-          WHERE ((bfd2.crime_id)::text = (c.crime_id)::text)) AS "drugWithQuantity",
+    ( SELECT COALESCE(array_agg(DISTINCT upper(TRIM(BOTH FROM brief_facts_drug.primary_drug_name))) FILTER (WHERE ((brief_facts_drug.primary_drug_name IS NOT NULL) AND (brief_facts_drug.primary_drug_name <> 'NO_DRUGS_DETECTED'::text))), ARRAY[]::text[]) AS "coalesce"
+           FROM public.brief_facts_drug
+          WHERE ((brief_facts_drug.crime_id)::text = (c.crime_id)::text)) AS "drugType",
+    ( SELECT jsonb_agg(jsonb_build_object('name', bfd.primary_drug_name, 'quantity', bfd.quantity_str) ORDER BY bfd.primary_drug_name, bfd.drug_form) AS jsonb_agg
+           FROM ( SELECT brief_facts_drug.primary_drug_name,
+                    brief_facts_drug.drug_form,
+                        CASE
+                            WHEN (sum(brief_facts_drug.weight_kg) > (0)::numeric) THEN concat(sum(brief_facts_drug.weight_kg), ' Kg')
+                            WHEN (sum(brief_facts_drug.volume_l) > (0)::numeric) THEN concat(sum(brief_facts_drug.volume_l), ' L')
+                            WHEN (sum(brief_facts_drug.count_total) > (0)::numeric) THEN concat(sum(brief_facts_drug.count_total), ' Units')
+                            ELSE 'N/A'::text
+                        END AS quantity_str
+                   FROM public.brief_facts_drug
+                  WHERE (((brief_facts_drug.crime_id)::text = (c.crime_id)::text) AND (brief_facts_drug.primary_drug_name IS NOT NULL) AND (brief_facts_drug.primary_drug_name <> 'NO_DRUGS_DETECTED'::text))
+                  GROUP BY brief_facts_drug.primary_drug_name, brief_facts_drug.drug_form) bfd) AS "drugWithQuantity",
     c.class_classification AS "caseClassification",
     c.case_status AS "caseStatus",
     ((c.class_classification)::text ~~* '%commercial%'::text) AS "isCommercial",
@@ -4325,7 +4341,7 @@ CREATE INDEX idx_accused_status ON public.accused USING btree (accused_status);
 
 
 --
--- TOC entry 4188 (class 1259 OID 30861072)
+-- TOC entry 4168 (class 1259 OID 30861072)
 -- Name: idx_accuseds_mv_accusedrole; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4333,7 +4349,7 @@ CREATE INDEX idx_accuseds_mv_accusedrole ON public.accuseds_mv USING btree ("acc
 
 
 --
--- TOC entry 4189 (class 1259 OID 30861069)
+-- TOC entry 4169 (class 1259 OID 30861069)
 -- Name: idx_accuseds_mv_accusedstatus; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4341,7 +4357,7 @@ CREATE INDEX idx_accuseds_mv_accusedstatus ON public.accuseds_mv USING btree ("a
 
 
 --
--- TOC entry 4190 (class 1259 OID 30861070)
+-- TOC entry 4170 (class 1259 OID 30861070)
 -- Name: idx_accuseds_mv_accusedstatusraw; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4349,7 +4365,7 @@ CREATE INDEX idx_accuseds_mv_accusedstatusraw ON public.accuseds_mv USING btree 
 
 
 --
--- TOC entry 4191 (class 1259 OID 30861071)
+-- TOC entry 4171 (class 1259 OID 30861071)
 -- Name: idx_accuseds_mv_accusedtype; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4357,7 +4373,7 @@ CREATE INDEX idx_accuseds_mv_accusedtype ON public.accuseds_mv USING btree ("acc
 
 
 --
--- TOC entry 4192 (class 1259 OID 30861082)
+-- TOC entry 4172 (class 1259 OID 30861082)
 -- Name: idx_accuseds_mv_age; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4365,7 +4381,7 @@ CREATE INDEX idx_accuseds_mv_age ON public.accuseds_mv USING btree (age);
 
 
 --
--- TOC entry 4193 (class 1259 OID 30861080)
+-- TOC entry 4173 (class 1259 OID 30861080)
 -- Name: idx_accuseds_mv_caseclassification; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4373,7 +4389,7 @@ CREATE INDEX idx_accuseds_mv_caseclassification ON public.accuseds_mv USING btre
 
 
 --
--- TOC entry 4194 (class 1259 OID 30861064)
+-- TOC entry 4174 (class 1259 OID 30861064)
 -- Name: idx_accuseds_mv_crimeid; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4381,7 +4397,7 @@ CREATE INDEX idx_accuseds_mv_crimeid ON public.accuseds_mv USING btree ("crimeId
 
 
 --
--- TOC entry 4195 (class 1259 OID 30861068)
+-- TOC entry 4175 (class 1259 OID 30861068)
 -- Name: idx_accuseds_mv_crimeregdate; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4389,7 +4405,7 @@ CREATE INDEX idx_accuseds_mv_crimeregdate ON public.accuseds_mv USING btree ("cr
 
 
 --
--- TOC entry 4196 (class 1259 OID 30861074)
+-- TOC entry 4176 (class 1259 OID 30861074)
 -- Name: idx_accuseds_mv_date_status; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4397,7 +4413,7 @@ CREATE INDEX idx_accuseds_mv_date_status ON public.accuseds_mv USING btree ("cri
 
 
 --
--- TOC entry 4197 (class 1259 OID 30861076)
+-- TOC entry 4177 (class 1259 OID 30861076)
 -- Name: idx_accuseds_mv_date_unit_domicile; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4405,7 +4421,7 @@ CREATE INDEX idx_accuseds_mv_date_unit_domicile ON public.accuseds_mv USING btre
 
 
 --
--- TOC entry 4198 (class 1259 OID 30861075)
+-- TOC entry 4178 (class 1259 OID 30861075)
 -- Name: idx_accuseds_mv_date_unit_status; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4413,7 +4429,7 @@ CREATE INDEX idx_accuseds_mv_date_unit_status ON public.accuseds_mv USING btree 
 
 
 --
--- TOC entry 4199 (class 1259 OID 30861073)
+-- TOC entry 4179 (class 1259 OID 30861073)
 -- Name: idx_accuseds_mv_domicile; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4421,7 +4437,7 @@ CREATE INDEX idx_accuseds_mv_domicile ON public.accuseds_mv USING btree (domicil
 
 
 --
--- TOC entry 4200 (class 1259 OID 30861084)
+-- TOC entry 4180 (class 1259 OID 30861084)
 -- Name: idx_accuseds_mv_drugtype_gin; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4429,7 +4445,7 @@ CREATE INDEX idx_accuseds_mv_drugtype_gin ON public.accuseds_mv USING gin ("drug
 
 
 --
--- TOC entry 4201 (class 1259 OID 30861083)
+-- TOC entry 4181 (class 1259 OID 30861083)
 -- Name: idx_accuseds_mv_firnumber; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4437,7 +4453,7 @@ CREATE INDEX idx_accuseds_mv_firnumber ON public.accuseds_mv USING btree ("firNu
 
 
 --
--- TOC entry 4202 (class 1259 OID 30861081)
+-- TOC entry 4182 (class 1259 OID 30861081)
 -- Name: idx_accuseds_mv_fullname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4445,7 +4461,7 @@ CREATE INDEX idx_accuseds_mv_fullname ON public.accuseds_mv USING btree ("fullNa
 
 
 --
--- TOC entry 4203 (class 1259 OID 30861077)
+-- TOC entry 4183 (class 1259 OID 30861077)
 -- Name: idx_accuseds_mv_gender; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4453,7 +4469,7 @@ CREATE INDEX idx_accuseds_mv_gender ON public.accuseds_mv USING btree (gender);
 
 
 --
--- TOC entry 4204 (class 1259 OID 30861063)
+-- TOC entry 4184 (class 1259 OID 30861063)
 -- Name: idx_accuseds_mv_id; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4461,7 +4477,7 @@ CREATE UNIQUE INDEX idx_accuseds_mv_id ON public.accuseds_mv USING btree (id);
 
 
 --
--- TOC entry 4205 (class 1259 OID 30861078)
+-- TOC entry 4185 (class 1259 OID 30861078)
 -- Name: idx_accuseds_mv_nationality; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4469,7 +4485,7 @@ CREATE INDEX idx_accuseds_mv_nationality ON public.accuseds_mv USING btree (nati
 
 
 --
--- TOC entry 4206 (class 1259 OID 30861079)
+-- TOC entry 4186 (class 1259 OID 30861079)
 -- Name: idx_accuseds_mv_permanentstateut; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4477,7 +4493,7 @@ CREATE INDEX idx_accuseds_mv_permanentstateut ON public.accuseds_mv USING btree 
 
 
 --
--- TOC entry 4207 (class 1259 OID 30861067)
+-- TOC entry 4187 (class 1259 OID 30861067)
 -- Name: idx_accuseds_mv_ps; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4485,7 +4501,7 @@ CREATE INDEX idx_accuseds_mv_ps ON public.accuseds_mv USING btree (ps);
 
 
 --
--- TOC entry 4208 (class 1259 OID 30861066)
+-- TOC entry 4188 (class 1259 OID 30861066)
 -- Name: idx_accuseds_mv_unit; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4493,7 +4509,7 @@ CREATE INDEX idx_accuseds_mv_unit ON public.accuseds_mv USING btree (unit);
 
 
 --
--- TOC entry 4209 (class 1259 OID 30861065)
+-- TOC entry 4189 (class 1259 OID 30861065)
 -- Name: idx_accuseds_mv_year; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4517,7 +4533,7 @@ CREATE INDEX idx_adt_canonical_person_id ON public.agent_deduplication_tracker U
 
 
 --
--- TOC entry 4160 (class 1259 OID 30054431)
+-- TOC entry 4140 (class 1259 OID 30054431)
 -- Name: idx_adv_accuseds_mv_accusedstatus; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4525,7 +4541,7 @@ CREATE INDEX idx_adv_accuseds_mv_accusedstatus ON public.advanced_search_accused
 
 
 --
--- TOC entry 4161 (class 1259 OID 30054430)
+-- TOC entry 4141 (class 1259 OID 30054430)
 -- Name: idx_adv_accuseds_mv_caseclass; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4533,7 +4549,7 @@ CREATE INDEX idx_adv_accuseds_mv_caseclass ON public.advanced_search_accuseds_mv
 
 
 --
--- TOC entry 4162 (class 1259 OID 30054429)
+-- TOC entry 4142 (class 1259 OID 30054429)
 -- Name: idx_adv_accuseds_mv_casestatus; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4541,7 +4557,7 @@ CREATE INDEX idx_adv_accuseds_mv_casestatus ON public.advanced_search_accuseds_m
 
 
 --
--- TOC entry 4163 (class 1259 OID 30054428)
+-- TOC entry 4143 (class 1259 OID 30054428)
 -- Name: idx_adv_accuseds_mv_distname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4549,7 +4565,7 @@ CREATE INDEX idx_adv_accuseds_mv_distname ON public.advanced_search_accuseds_mv 
 
 
 --
--- TOC entry 4164 (class 1259 OID 30054432)
+-- TOC entry 4144 (class 1259 OID 30054432)
 -- Name: idx_adv_accuseds_mv_firdate_psname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4557,7 +4573,7 @@ CREATE INDEX idx_adv_accuseds_mv_firdate_psname ON public.advanced_search_accuse
 
 
 --
--- TOC entry 4165 (class 1259 OID 30054425)
+-- TOC entry 4145 (class 1259 OID 30054425)
 -- Name: idx_adv_accuseds_mv_fullname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4565,7 +4581,7 @@ CREATE INDEX idx_adv_accuseds_mv_fullname ON public.advanced_search_accuseds_mv 
 
 
 --
--- TOC entry 4166 (class 1259 OID 30054426)
+-- TOC entry 4146 (class 1259 OID 30054426)
 -- Name: idx_adv_accuseds_mv_name; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4573,7 +4589,7 @@ CREATE INDEX idx_adv_accuseds_mv_name ON public.advanced_search_accuseds_mv USIN
 
 
 --
--- TOC entry 4167 (class 1259 OID 30054427)
+-- TOC entry 4147 (class 1259 OID 30054427)
 -- Name: idx_adv_accuseds_mv_psname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4581,7 +4597,7 @@ CREATE INDEX idx_adv_accuseds_mv_psname ON public.advanced_search_accuseds_mv US
 
 
 --
--- TOC entry 4171 (class 1259 OID 30060311)
+-- TOC entry 4151 (class 1259 OID 30060311)
 -- Name: idx_adv_firs_mv_caseclass; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4589,7 +4605,7 @@ CREATE INDEX idx_adv_firs_mv_caseclass ON public.advanced_search_firs_mv USING b
 
 
 --
--- TOC entry 4172 (class 1259 OID 30060310)
+-- TOC entry 4152 (class 1259 OID 30060310)
 -- Name: idx_adv_firs_mv_casestatus; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4597,7 +4613,7 @@ CREATE INDEX idx_adv_firs_mv_casestatus ON public.advanced_search_firs_mv USING 
 
 
 --
--- TOC entry 4173 (class 1259 OID 30060312)
+-- TOC entry 4153 (class 1259 OID 30060312)
 -- Name: idx_adv_firs_mv_crimetype; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4605,7 +4621,7 @@ CREATE INDEX idx_adv_firs_mv_crimetype ON public.advanced_search_firs_mv USING b
 
 
 --
--- TOC entry 4174 (class 1259 OID 30060309)
+-- TOC entry 4154 (class 1259 OID 30060309)
 -- Name: idx_adv_firs_mv_distname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4613,7 +4629,7 @@ CREATE INDEX idx_adv_firs_mv_distname ON public.advanced_search_firs_mv USING bt
 
 
 --
--- TOC entry 4175 (class 1259 OID 30060314)
+-- TOC entry 4155 (class 1259 OID 30060314)
 -- Name: idx_adv_firs_mv_firdate_distname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4621,7 +4637,7 @@ CREATE INDEX idx_adv_firs_mv_firdate_distname ON public.advanced_search_firs_mv 
 
 
 --
--- TOC entry 4176 (class 1259 OID 30060313)
+-- TOC entry 4156 (class 1259 OID 30060313)
 -- Name: idx_adv_firs_mv_firdate_psname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4629,7 +4645,7 @@ CREATE INDEX idx_adv_firs_mv_firdate_psname ON public.advanced_search_firs_mv US
 
 
 --
--- TOC entry 4177 (class 1259 OID 30060308)
+-- TOC entry 4157 (class 1259 OID 30060308)
 -- Name: idx_adv_firs_mv_psname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4637,7 +4653,7 @@ CREATE INDEX idx_adv_firs_mv_psname ON public.advanced_search_firs_mv USING btre
 
 
 --
--- TOC entry 4168 (class 1259 OID 30054424)
+-- TOC entry 4148 (class 1259 OID 30054424)
 -- Name: idx_advanced_search_accuseds_mv_firdate; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4645,7 +4661,7 @@ CREATE INDEX idx_advanced_search_accuseds_mv_firdate ON public.advanced_search_a
 
 
 --
--- TOC entry 4169 (class 1259 OID 30054423)
+-- TOC entry 4149 (class 1259 OID 30054423)
 -- Name: idx_advanced_search_accuseds_mv_firnum; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4653,7 +4669,7 @@ CREATE INDEX idx_advanced_search_accuseds_mv_firnum ON public.advanced_search_ac
 
 
 --
--- TOC entry 4170 (class 1259 OID 30054422)
+-- TOC entry 4150 (class 1259 OID 30054422)
 -- Name: idx_advanced_search_accuseds_mv_id; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4661,7 +4677,7 @@ CREATE UNIQUE INDEX idx_advanced_search_accuseds_mv_id ON public.advanced_search
 
 
 --
--- TOC entry 4178 (class 1259 OID 30060307)
+-- TOC entry 4158 (class 1259 OID 30060307)
 -- Name: idx_advanced_search_firs_mv_firdate; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4669,7 +4685,7 @@ CREATE INDEX idx_advanced_search_firs_mv_firdate ON public.advanced_search_firs_
 
 
 --
--- TOC entry 4179 (class 1259 OID 30060306)
+-- TOC entry 4159 (class 1259 OID 30060306)
 -- Name: idx_advanced_search_firs_mv_firnum; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4677,7 +4693,7 @@ CREATE INDEX idx_advanced_search_firs_mv_firnum ON public.advanced_search_firs_m
 
 
 --
--- TOC entry 4180 (class 1259 OID 30060305)
+-- TOC entry 4160 (class 1259 OID 30060305)
 -- Name: idx_advanced_search_firs_mv_id; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4845,7 +4861,7 @@ CREATE INDEX idx_crimes_ps_code ON public.crimes USING btree (ps_code);
 
 
 --
--- TOC entry 4181 (class 1259 OID 30092757)
+-- TOC entry 4161 (class 1259 OID 30092757)
 -- Name: idx_criminal_profiles_mv_age; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4853,7 +4869,7 @@ CREATE INDEX idx_criminal_profiles_mv_age ON public.criminal_profiles_mv USING b
 
 
 --
--- TOC entry 4182 (class 1259 OID 30092756)
+-- TOC entry 4162 (class 1259 OID 30092756)
 -- Name: idx_criminal_profiles_mv_domicile; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4861,7 +4877,7 @@ CREATE INDEX idx_criminal_profiles_mv_domicile ON public.criminal_profiles_mv US
 
 
 --
--- TOC entry 4183 (class 1259 OID 30092754)
+-- TOC entry 4163 (class 1259 OID 30092754)
 -- Name: idx_criminal_profiles_mv_fullname; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4869,7 +4885,7 @@ CREATE INDEX idx_criminal_profiles_mv_fullname ON public.criminal_profiles_mv US
 
 
 --
--- TOC entry 4184 (class 1259 OID 30092758)
+-- TOC entry 4164 (class 1259 OID 30092758)
 -- Name: idx_criminal_profiles_mv_gender; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4877,7 +4893,7 @@ CREATE INDEX idx_criminal_profiles_mv_gender ON public.criminal_profiles_mv USIN
 
 
 --
--- TOC entry 4185 (class 1259 OID 30092753)
+-- TOC entry 4165 (class 1259 OID 30092753)
 -- Name: idx_criminal_profiles_mv_id; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4885,7 +4901,7 @@ CREATE UNIQUE INDEX idx_criminal_profiles_mv_id ON public.criminal_profiles_mv U
 
 
 --
--- TOC entry 4186 (class 1259 OID 30092759)
+-- TOC entry 4166 (class 1259 OID 30092759)
 -- Name: idx_criminal_profiles_mv_nationality; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4893,7 +4909,7 @@ CREATE INDEX idx_criminal_profiles_mv_nationality ON public.criminal_profiles_mv
 
 
 --
--- TOC entry 4187 (class 1259 OID 30092755)
+-- TOC entry 4167 (class 1259 OID 30092755)
 -- Name: idx_criminal_profiles_mv_noofcrimes; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4981,7 +4997,7 @@ CREATE INDEX idx_files_source_type_created ON public.files USING btree (source_t
 
 
 --
--- TOC entry 4140 (class 1259 OID 30003478)
+-- TOC entry 4190 (class 1259 OID 31917506)
 -- Name: idx_firs_mv_acquittalcount; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4989,7 +5005,7 @@ CREATE INDEX idx_firs_mv_acquittalcount ON public.firs_mv USING btree ("acquitta
 
 
 --
--- TOC entry 4141 (class 1259 OID 30003475)
+-- TOC entry 4191 (class 1259 OID 31917503)
 -- Name: idx_firs_mv_caseclassification; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -4997,7 +5013,7 @@ CREATE INDEX idx_firs_mv_caseclassification ON public.firs_mv USING btree ("case
 
 
 --
--- TOC entry 4142 (class 1259 OID 30003473)
+-- TOC entry 4192 (class 1259 OID 31917501)
 -- Name: idx_firs_mv_casestatus; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5005,7 +5021,7 @@ CREATE INDEX idx_firs_mv_casestatus ON public.firs_mv USING btree ("caseStatus")
 
 
 --
--- TOC entry 4143 (class 1259 OID 30003477)
+-- TOC entry 4193 (class 1259 OID 31917505)
 -- Name: idx_firs_mv_convictioncount; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5013,7 +5029,7 @@ CREATE INDEX idx_firs_mv_convictioncount ON public.firs_mv USING btree ("convict
 
 
 --
--- TOC entry 4144 (class 1259 OID 30003472)
+-- TOC entry 4194 (class 1259 OID 31917500)
 -- Name: idx_firs_mv_crimeregdate; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5021,7 +5037,7 @@ CREATE INDEX idx_firs_mv_crimeregdate ON public.firs_mv USING btree ("crimeRegDa
 
 
 --
--- TOC entry 4145 (class 1259 OID 30003474)
+-- TOC entry 4195 (class 1259 OID 31917502)
 -- Name: idx_firs_mv_crimetype; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5029,7 +5045,7 @@ CREATE INDEX idx_firs_mv_crimetype ON public.firs_mv USING btree ("crimeType");
 
 
 --
--- TOC entry 4146 (class 1259 OID 30003485)
+-- TOC entry 4196 (class 1259 OID 31917513)
 -- Name: idx_firs_mv_date_commercial; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5037,7 +5053,7 @@ CREATE INDEX idx_firs_mv_date_commercial ON public.firs_mv USING btree ("crimeRe
 
 
 --
--- TOC entry 4147 (class 1259 OID 30003481)
+-- TOC entry 4197 (class 1259 OID 31917509)
 -- Name: idx_firs_mv_date_status; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5045,7 +5061,7 @@ CREATE INDEX idx_firs_mv_date_status ON public.firs_mv USING btree ("crimeRegDat
 
 
 --
--- TOC entry 4148 (class 1259 OID 30003482)
+-- TOC entry 4198 (class 1259 OID 31917510)
 -- Name: idx_firs_mv_date_unit; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5053,7 +5069,7 @@ CREATE INDEX idx_firs_mv_date_unit ON public.firs_mv USING btree ("crimeRegDate"
 
 
 --
--- TOC entry 4149 (class 1259 OID 30003484)
+-- TOC entry 4199 (class 1259 OID 31917512)
 -- Name: idx_firs_mv_date_unit_acquittal; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5061,7 +5077,7 @@ CREATE INDEX idx_firs_mv_date_unit_acquittal ON public.firs_mv USING btree ("cri
 
 
 --
--- TOC entry 4150 (class 1259 OID 30003483)
+-- TOC entry 4200 (class 1259 OID 31917511)
 -- Name: idx_firs_mv_date_unit_conviction; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5069,7 +5085,7 @@ CREATE INDEX idx_firs_mv_date_unit_conviction ON public.firs_mv USING btree ("cr
 
 
 --
--- TOC entry 4151 (class 1259 OID 30003486)
+-- TOC entry 4201 (class 1259 OID 31917514)
 -- Name: idx_firs_mv_drugtype_gin; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5077,7 +5093,7 @@ CREATE INDEX idx_firs_mv_drugtype_gin ON public.firs_mv USING gin ("drugType");
 
 
 --
--- TOC entry 4152 (class 1259 OID 30003471)
+-- TOC entry 4202 (class 1259 OID 31917499)
 -- Name: idx_firs_mv_firnumber; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5085,7 +5101,7 @@ CREATE INDEX idx_firs_mv_firnumber ON public.firs_mv USING btree ("firNumber");
 
 
 --
--- TOC entry 4153 (class 1259 OID 30003467)
+-- TOC entry 4203 (class 1259 OID 31917495)
 -- Name: idx_firs_mv_id; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5093,7 +5109,7 @@ CREATE UNIQUE INDEX idx_firs_mv_id ON public.firs_mv USING btree (id);
 
 
 --
--- TOC entry 4154 (class 1259 OID 30003476)
+-- TOC entry 4204 (class 1259 OID 31917504)
 -- Name: idx_firs_mv_iscommercial; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5101,7 +5117,7 @@ CREATE INDEX idx_firs_mv_iscommercial ON public.firs_mv USING btree ("isCommerci
 
 
 --
--- TOC entry 4155 (class 1259 OID 30003470)
+-- TOC entry 4205 (class 1259 OID 31917498)
 -- Name: idx_firs_mv_ps; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5109,7 +5125,7 @@ CREATE INDEX idx_firs_mv_ps ON public.firs_mv USING btree (ps);
 
 
 --
--- TOC entry 4156 (class 1259 OID 30003480)
+-- TOC entry 4206 (class 1259 OID 31917508)
 -- Name: idx_firs_mv_stipulated; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5117,7 +5133,7 @@ CREATE INDEX idx_firs_mv_stipulated ON public.firs_mv USING btree ("stipulatedPe
 
 
 --
--- TOC entry 4157 (class 1259 OID 30003479)
+-- TOC entry 4207 (class 1259 OID 31917507)
 -- Name: idx_firs_mv_totaldisposals; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5125,7 +5141,7 @@ CREATE INDEX idx_firs_mv_totaldisposals ON public.firs_mv USING btree ("totalDis
 
 
 --
--- TOC entry 4158 (class 1259 OID 30003469)
+-- TOC entry 4208 (class 1259 OID 31917497)
 -- Name: idx_firs_mv_unit; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5133,7 +5149,7 @@ CREATE INDEX idx_firs_mv_unit ON public.firs_mv USING btree (unit);
 
 
 --
--- TOC entry 4159 (class 1259 OID 30003468)
+-- TOC entry 4209 (class 1259 OID 31917496)
 -- Name: idx_firs_mv_year; Type: INDEX; Schema: public; Owner: dev_dopamas
 --
 
@@ -5893,11 +5909,11 @@ ALTER DEFAULT PRIVILEGES FOR ROLE dopamasprd_ur IN SCHEMA public GRANT ALL ON SE
 ALTER DEFAULT PRIVILEGES FOR ROLE dopamasprd_ur IN SCHEMA public GRANT SELECT,INSERT,REFERENCES,DELETE,TRIGGER,TRUNCATE,UPDATE ON TABLES TO dev_dopamas;
 
 
--- Completed on 2026-03-17 20:55:56
+-- Completed on 2026-03-20 16:44:17
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict xYGJqQ5CMT2BF5dy4hjcu3TvewdvQZYkCzObLJnhRTd9kdbgaHW7WeiMDzPhizt
+\unrestrict x5rZZscgYowRqoD4VLi9B5dCWvIdYU9dGAQk7hyOUHKmonVjgTbwb0hDwbvF7N0
 
