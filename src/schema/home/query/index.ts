@@ -69,6 +69,7 @@ const HomeQueryFields = {
     },
     resolve: (_root, { from, to, drugNames }) => getDrugData(from, to, drugNames),
   },
+  // Static list — no date args, returns all drugs ever recorded in the system
   drugList: {
     type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))),
     resolve: () => getDrugList(),

@@ -429,9 +429,10 @@ export async function getDrugData(from: string | undefined, to: string | undefin
 
 export async function getDrugList() {
   const result = await prisma.$queryRawUnsafe<{ drug_name: string }[]>(
-    `SELECT DISTINCT UPPER(TRIM(primary_drug_name)) as drug_name 
-     FROM brief_facts_drug 
-     WHERE primary_drug_name IS NOT NULL AND TRIM(primary_drug_name) != '';`
+    `SELECT DISTINCT UPPER(TRIM(primary_drug_name)) as drug_name
+     FROM brief_facts_drug
+     WHERE primary_drug_name IS NOT NULL
+       AND TRIM(primary_drug_name) != '';`
   );
 
   return result
@@ -540,15 +541,14 @@ export async function getAccusedTypeClassification(from: string | undefined, to:
   return await prisma.$queryRawUnsafe<{ label: string; value: number }[]>(
     `
         SELECT
-            COALESCE(NULLIF(TRIM(bfa."accused_type"), ''), 'Unknown') AS "label",
-            COUNT(DISTINCT a."accused_id")::int AS "value"
-        FROM accused a
-        LEFT JOIN brief_facts_accused bfa ON bfa."accused_id" = a."accused_id"
-        WHERE a."crime_id" = ANY($1)
-        GROUP BY COALESCE(NULLIF(TRIM(bfa."accused_type"), ''), 'Unknown')
-        ORDER BY 
-            CASE WHEN COALESCE(NULLIF(TRIM(bfa."accused_type"), ''), 'Unknown') = 'Unknown' THEN 1 ELSE 0 END,
-            COUNT(DISTINCT a."accused_id") DESC; 
+            COALESCE(NULLIF(TRIM("accusedRole"), ''), 'Unknown') AS "label",
+            COUNT(DISTINCT id)::int AS "value"
+        FROM accuseds_mv
+        WHERE "crimeId" = ANY($1)
+        GROUP BY COALESCE(NULLIF(TRIM("accusedRole"), ''), 'Unknown')
+        ORDER BY
+            CASE WHEN COALESCE(NULLIF(TRIM("accusedRole"), ''), 'Unknown') = 'Unknown' THEN 1 ELSE 0 END,
+            COUNT(DISTINCT id) DESC;
     `,
     crimes.map(crime => crime.id)
   );
@@ -560,15 +560,14 @@ export async function getDomicileClassification(from: string | undefined, to: st
   return await prisma.$queryRawUnsafe<{ label: string; value: number }[]>(
     `
         SELECT
-            COALESCE(NULLIF(TRIM(p."domicile_classification"), ''), 'Unknown') AS "label",
-            COUNT(DISTINCT a."accused_id")::int AS "value"
-        FROM accused a
-        LEFT JOIN persons p ON a."person_id"::text = p."person_id"::text
-        WHERE a."crime_id" = ANY($1)
-        GROUP BY COALESCE(NULLIF(TRIM(p."domicile_classification"), ''), 'Unknown')
-        ORDER BY 
-            CASE WHEN COALESCE(NULLIF(TRIM(p."domicile_classification"), ''), 'Unknown') = 'Unknown' THEN 1 ELSE 0 END,
-            COUNT(DISTINCT a."accused_id") DESC;
+            COALESCE(NULLIF(TRIM(domicile), ''), 'Unknown') AS "label",
+            COUNT(DISTINCT id)::int AS "value"
+        FROM accuseds_mv
+        WHERE "crimeId" = ANY($1)
+        GROUP BY COALESCE(NULLIF(TRIM(domicile), ''), 'Unknown')
+        ORDER BY
+            CASE WHEN COALESCE(NULLIF(TRIM(domicile), ''), 'Unknown') = 'Unknown' THEN 1 ELSE 0 END,
+            COUNT(DISTINCT id) DESC;
     `,
     crimes.map(crime => crime.id)
   );
