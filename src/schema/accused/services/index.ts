@@ -610,17 +610,17 @@ export async function getAccusedFilterValues(filters: AccusedFilterInput = {}) {
   ]);
 
   return {
-    years: years.map(year => year.year),
-    units: units.map(unit => unit.unit),
-    caseClass: caseClass.map(caseClass => caseClass.caseClassification),
-    caseStatus: caseStatus.map(caseStatus => caseStatus.caseStatus),
-    accusedStatus: accusedStatus.map(accusedStatus => accusedStatus.accusedStatus),
-    accusedType: accusedType.map(accusedType => accusedType.accusedType),
-    domicile: domicile.map(domicile => domicile.domicile),
-    ps: ps.map(ps => ps.ps),
-    gender: gender.map(gender => gender.gender),
-    nationality: nationality.map(nationality => nationality.nationality),
-    state: state.map(state => state.presentStateUt),
+    years: years.map(year => year.year).filter(y => y !== null),
+    units: units.map(unit => unit.unit).filter(u => !!u),
+    caseClass: caseClass.map(caseClass => caseClass.caseClassification).filter(c => !!c),
+    caseStatus: caseStatus.map(caseStatus => caseStatus.caseStatus).filter(s => !!s),
+    accusedStatus: accusedStatus.map(accusedStatus => accusedStatus.accusedStatus).filter(s => !!s),
+    accusedType: accusedType.map(accusedType => accusedType.accusedType).filter(t => !!t),
+    domicile: domicile.map(domicile => domicile.domicile).filter(d => !!d),
+    ps: ps.map(ps => ps.ps).filter(p => !!p),
+    gender: gender.map(gender => gender.gender).filter(g => !!g),
+    nationality: nationality.map(nationality => nationality.nationality).filter(n => !!n),
+    state: state.map(state => state.presentStateUt).filter(s => !!s),
     drugTypes: [
       { categoryName: 'All Drugs', drugs: Array.from(new Set(drugTypes.flatMap(drugType => drugType.drugType))) },
     ],
