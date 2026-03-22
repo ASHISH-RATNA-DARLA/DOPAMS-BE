@@ -22,5 +22,6 @@ export const AccusedFilterInputType = new GraphQLInputObjectType({
     caseClass: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     accusedStatus: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
     accusedType: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
+    accusedRole: { type: new GraphQLList(new GraphQLNonNull(GraphQLString)) },
   }),
 });

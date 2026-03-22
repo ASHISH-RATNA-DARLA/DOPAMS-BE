@@ -73,7 +73,69 @@ export function buildFilters(filters: FirFilterInput = {}) {
   if (caseClass && caseClass.length) addArrayLike('caseClassification', caseClass);
 
   const caseStatus = filters.caseStatus;
-  if (caseStatus && caseStatus.length) addArrayLike('caseStatus', caseStatus);
+  if (caseStatus && caseStatus.length) {
+    const statusClauses: string[] = [];
+    const regularStatuses: string[] = [];
+
+    // Waterfall logic exactly matching getFirStatistics
+    const hasAcquittal = `EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Acquittal%')`;
+    const hasConviction = `EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Convict%')`;
+    const hasCompounded = `EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Compounded%' OR elem->>'disposalType' ILIKE '%Compromised%')`;
+    const hasPoliceDisposal = `EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Abated%' OR elem->>'disposalType' ILIKE '%Undetect%' OR elem->>'disposalType' ILIKE '%Action Dropped%' OR elem->>'disposalType' ILIKE '%Lack of Evidence%' OR elem->>'disposalType' ILIKE '%Mistake%' OR elem->>'disposalType' ILIKE '%Civil Nature%' OR elem->>'disposalType' ILIKE '%Transferred%' OR elem->>'disposalType' ILIKE '%Any Other%')`;
+    const hasAnyDisposal = `("disposalDetails" IS NOT NULL AND jsonb_array_length("disposalDetails") > 0)`;
+    const isUI = `UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION')`;
+    const hasChargesheet = `("chargesheets" IS NOT NULL AND jsonb_array_length("chargesheets") > 0)`;
+    const isPT = `UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL')`;
+
+    caseStatus.forEach(status => {
+      const normalized = status.trim();
+      if (normalized === 'Acquittal') {
+        statusClauses.push(`(${hasAnyDisposal} AND ${hasAcquittal})`);
+      } else if (normalized === 'Conviction') {
+        statusClauses.push(`(${hasAnyDisposal} AND NOT ${hasAcquittal} AND ${hasConviction})`);
+      } else if (normalized === 'Compounded') {
+        statusClauses.push(`(${hasAnyDisposal} AND NOT ${hasAcquittal} AND NOT ${hasConviction} AND ${hasCompounded})`);
+      } else if (normalized === 'Police Disposal') {
+        statusClauses.push(
+          `(${hasAnyDisposal} AND NOT ${hasAcquittal} AND NOT ${hasConviction} AND NOT ${hasCompounded} AND ${hasPoliceDisposal})`
+        );
+      } else if (normalized === 'Other Disposals') {
+        statusClauses.push(
+          `(${hasAnyDisposal} AND NOT ${hasAcquittal} AND NOT ${hasConviction} AND NOT ${hasCompounded} AND NOT ${hasPoliceDisposal})`
+        );
+      } else if (normalized === 'Disposed') {
+        statusClauses.push(`(${hasAnyDisposal} AND NOT ${hasAcquittal} AND NOT ${hasConviction})`);
+      } else if (normalized === 'UI' || normalized === 'Under Investigation') {
+        statusClauses.push(`(NOT ${hasAnyDisposal} AND ${isUI})`);
+      } else if (normalized === 'Chargesheeted' || normalized === 'Chargesheet Created') {
+        statusClauses.push(`(NOT ${hasAnyDisposal} AND NOT ${isUI} AND ${hasChargesheet})`);
+      } else if (normalized === 'PT' || normalized === 'Pending Trial') {
+        statusClauses.push(`(NOT ${hasAnyDisposal} AND NOT ${isUI} AND NOT ${hasChargesheet} AND ${isPT})`);
+      } else if (normalized === 'Unknown') {
+        statusClauses.push(
+          `(NOT ${hasAnyDisposal} AND NOT ${isUI} AND NOT ${hasChargesheet} AND NOT ${isPT} AND UPPER(TRIM("caseStatus")) = 'UNKNOWN')`
+        );
+      } else {
+        regularStatuses.push(normalized);
+      }
+    });
+
+    if (regularStatuses.length) {
+      const regexValues = regularStatuses.map(v => `\\m${v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`);
+      params.push(regexValues);
+      statusClauses.push(`
+        EXISTS (
+          SELECT 1
+          FROM unnest($${params.length}::text[]) AS re(val)
+          WHERE "caseStatus" ~* val
+        )
+      `);
+    }
+
+    if (statusClauses.length > 0) {
+      clauses.push(`(${statusClauses.join(' OR ')})`);
+    }
+  }
 
   const name = filters.name?.trim();
   if (name && name.length) {

@@ -41,18 +41,6 @@ export function buildFilters(filters: AccusedFilterInput = {}) {
   const clauses: string[] = [];
   const params: any[] = [];
 
-  function addArrayLike(column: string, value: any[]) {
-    const regexValues = value.map(v => `\\m${v.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\M`);
-    params.push(regexValues);
-    clauses.push(`
-      EXISTS (
-        SELECT 1
-        FROM unnest($${params.length}::text[]) AS re(val)
-        WHERE "${column}" ~* val
-      )
-    `);
-  }
-
   const name = filters.name?.trim();
   if (name && name.length) {
     params.push(`%${name}%`);
@@ -68,34 +56,70 @@ export function buildFilters(filters: AccusedFilterInput = {}) {
   }
 
   const units = filters.units;
-  if (units && units.length) addArrayLike('unit', units);
+  if (units && units.length) {
+    params.push(units);
+    clauses.push(`"unit" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const nationality = filters.nationality;
-  if (nationality && nationality.length) addArrayLike('nationality', nationality);
+  if (nationality && nationality.length) {
+    params.push(nationality);
+    clauses.push(`"nationality" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const state = filters.state;
-  if (state && state.length) addArrayLike('presentStateUt', state);
+  if (state && state.length) {
+    params.push(state);
+    clauses.push(`"presentStateUt" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const gender = filters.gender;
-  if (gender && gender.length) addArrayLike('gender', gender);
+  if (gender && gender.length) {
+    params.push(gender);
+    clauses.push(`"gender" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const caseStatus = filters.caseStatus;
-  if (caseStatus && caseStatus.length) addArrayLike('caseStatus', caseStatus);
+  if (caseStatus && caseStatus.length) {
+    params.push(caseStatus);
+    clauses.push(`"caseStatus" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const domicileClass = filters.domicileClass;
-  if (domicileClass && domicileClass.length) addArrayLike('domicile', domicileClass);
+  if (domicileClass && domicileClass.length) {
+    params.push(domicileClass);
+    clauses.push(`"domicile" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const ps = filters.ps;
-  if (ps && ps.length) addArrayLike('ps', ps);
+  if (ps && ps.length) {
+    params.push(ps);
+    clauses.push(`"ps" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const caseClass = filters.caseClass;
-  if (caseClass && caseClass.length) addArrayLike('caseClassification', caseClass);
+  if (caseClass && caseClass.length) {
+    params.push(caseClass);
+    clauses.push(`"caseClassification" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const accusedStatus = filters.accusedStatus;
-  if (accusedStatus && accusedStatus.length) addArrayLike('accusedStatus', accusedStatus);
+  if (accusedStatus && accusedStatus.length) {
+    params.push(accusedStatus);
+    clauses.push(`"accusedStatus" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const accusedType = filters.accusedType;
-  if (accusedType && accusedType.length) addArrayLike('accusedType', accusedType);
+  if (accusedType && accusedType.length) {
+    params.push(accusedType);
+    clauses.push(`"accusedType" ILIKE ANY($${params.length}::text[])`);
+  }
+
+  const accusedRole = filters.accusedRole;
+  if (accusedRole && accusedRole.length) {
+    params.push(accusedRole);
+    clauses.push(`"accusedRole" ILIKE ANY($${params.length}::text[])`);
+  }
 
   const drugTypes = filters.drugTypes;
   if (drugTypes && drugTypes.length) {
@@ -564,7 +588,7 @@ export async function getAccusedFilterValues(filters: AccusedFilterInput = {}) {
       ...params
     ),
     prisma.$queryRawUnsafe<{ year: number }[]>(
-      `SELECT DISTINCT a."year" from accuseds_mv a ${whereClause} ${whereClause.length ? 'AND' : 'WHERE'} a."year" IS NOT NULL ORDER BY a."year";`,
+      `SELECT DISTINCT a."year" FROM (SELECT * FROM accuseds_mv ${whereClause}) a WHERE a."year" IS NOT NULL ORDER BY a."year";`,
       ...params
     ),
     prisma.$queryRawUnsafe<{ presentStateUt: string }[]>(
@@ -580,7 +604,7 @@ export async function getAccusedFilterValues(filters: AccusedFilterInput = {}) {
       ...params
     ),
     prisma.$queryRawUnsafe<{ drugType: string[] }[]>(
-      `SELECT DISTINCT ON (LOWER(val)) val AS "drugType" FROM accuseds_mv a CROSS JOIN LATERAL unnest(a."drugType") AS t(val) ${whereClause} ${whereClause.length ? 'AND' : 'WHERE'} a."drugType" IS NOT NULL ORDER BY LOWER(val), val;`,
+      `SELECT DISTINCT ON (LOWER(val)) val AS "drugType" FROM (SELECT * FROM accuseds_mv ${whereClause}) a CROSS JOIN LATERAL unnest(a."drugType") AS t(val) WHERE a."drugType" IS NOT NULL ORDER BY LOWER(val), val;`,
       ...params
     ),
   ]);
