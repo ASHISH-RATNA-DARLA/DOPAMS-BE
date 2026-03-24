@@ -279,7 +279,7 @@ export const IrDetailsType = new GraphQLObjectType({
     timeSinceModusOperandi: { type: GraphQLString },
     dateCreated: { type: GraphQLString },
     dateModified: { type: GraphQLString },
-    familyMembers: { type: FamilyMembersType },
+    familyMembers: { type: FamilyMembersType }, // kept: InterrogationReports.tsx imports FamilyMemberType and uses familyMembers for casting
     associateDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(AssociateDetailsType))) },
     consumerDetails: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(ConsumerDetailsType))) },
     defenceCounsel: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DefenceCounselType))) },

@@ -15,6 +15,7 @@ import schema from './schema';
 import { cirkleLogger, logger } from './utils/logger';
 import { generateReferenceId, returnSuccessHTTPResponse } from './utils/misc';
 import { authenticateUser } from './schema/user/services';
+import fileProxyRouter from './routes/fileProxy';
 
 dotenv.config();
 const { PORT, NODE_ENV } = process.env;
@@ -80,6 +81,10 @@ app.use(
     limit: '50mb',
   })
 );
+
+// Mount REST API routes (file proxy, etc.)
+app.use('/api', fileProxyRouter);
+
 app.get('/version', (_req: Request, res: Response): void => {
   getVersion(res);
 });

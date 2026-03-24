@@ -10,7 +10,6 @@ import {
 
 import { PaginationType } from 'schema/pagination/pagination';
 import { StatisticsListType } from 'schema/misc/statistics';
-import { DocumentType } from 'schema/misc/document';
 import { IrDetailsType } from './interrogation_report';
 import { DrugTypeGroupType } from './seizures';
 
@@ -41,12 +40,14 @@ export const FirType = new GraphQLObjectType({
     caseStatus: { type: GraphQLString },
     isCommercial: { type: GraphQLBoolean },
     convictionCount: { type: GraphQLInt },
+    acquittalCount: { type: GraphQLInt }, // NEW — was missing from original
     totalDisposals: { type: GraphQLInt },
     stipulatedPeriodForCS: { type: GraphQLString },
     chargesheets: { type: new GraphQLList(new GraphQLNonNull(ChargesheetType)) },
     chargesheetUpdates: { type: new GraphQLList(new GraphQLNonNull(ChargesheetUpdateType)) },
-    documents: { type: new GraphQLList(new GraphQLNonNull(DocumentType)) },
+    documents: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) }, // changed: was DocumentType, now FileDetailsType (has fileUrl)
     firCopy: { type: GraphQLString },
+    firCopyUrl: { type: GraphQLString }, // NEW — full Tomcat URL computed by MV
     propertyDocuments: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) },
     irDocuments: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) },
     disposalDetails: { type: new GraphQLList(new GraphQLNonNull(DisposalDetailsType)) },
@@ -55,11 +56,17 @@ export const FirType = new GraphQLObjectType({
   }),
 });
 
+// UPDATED: added id, name, filePath, fileUrl alongside original type+link fields
+// documents, propertyDocuments and irDocuments all use this type
 const FileDetailsType = new GraphQLObjectType({
   name: 'FileDetailsType',
   fields: () => ({
-    type: { type: new GraphQLNonNull(GraphQLString) },
-    link: { type: new GraphQLNonNull(GraphQLString) },
+    id: { type: GraphQLString },
+    name: { type: GraphQLString },
+    type: { type: GraphQLString },
+    filePath: { type: GraphQLString },
+    fileUrl: { type: GraphQLString }, // NEW — full Tomcat URL
+    link: { type: GraphQLString }, // kept for backward compat
   }),
 });
 
@@ -108,12 +115,15 @@ const MoSeizureDetailsType = new GraphQLObjectType({
   }),
 });
 
+// UPDATED: added personId for criminal-profile navigation
+// kept id + value for backward compat with any other code that references them
 const AccusedDetailsType = new GraphQLObjectType({
   name: 'AccusedDetailsType',
   fields: () => ({
     id: { type: GraphQLID },
     value: { type: GraphQLString },
     fullName: { type: GraphQLString },
+    personId: { type: GraphQLString }, // NEW — used for /criminal-profile navigation
     personCode: { type: GraphQLString },
     accusedType: { type: GraphQLString },
     status: { type: GraphQLString },

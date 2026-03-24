@@ -322,6 +322,12 @@ export async function getFir(id: string) {
   const fir = result[0];
 
   if (!fir) throw new ResourceNotFoundException('FIR Not Found');
+
+  // Coerce BigInt fields to Number for GraphQL compatibility
+  if (typeof fir.noOfAccusedInvolved === 'bigint') {
+    fir.noOfAccusedInvolved = Number(fir.noOfAccusedInvolved);
+  }
+
   return fir;
 }
 

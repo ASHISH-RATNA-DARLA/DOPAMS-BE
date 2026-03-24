@@ -29,6 +29,7 @@ const FirSortByEnumType = new GraphQLEnumType({
     chargesheets: { value: 'chargesheets' },
     documents: { value: 'documents' },
     firCopy: { value: 'firCopy' },
+    firCopyUrl: { value: 'firCopyUrl' },
     propertyDocuments: { value: 'propertyDocuments' },
     irDocuments: { value: 'irDocuments' },
   },
