@@ -31,6 +31,11 @@ const login = async (email: string, password: string) => {
 // WIP
 // Updated signup function to match the Prisma schema
 const signup = async (email: string, password: string) => {
+  const existingUser = await getUserByEmail(email);
+  if (existingUser) {
+    throw new UserAuthException('User already exists');
+  }
+
   // Create a new user with a linked person record
   const user = await prisma.user.create({
     data: {
@@ -143,13 +148,16 @@ const resetPassword = async (userId: string) => {
   };
 };
 
-const getUserByEmail = (email: string): Promise<User | null> => {
-  const user = prisma.user.findUnique({
+const getUserByEmail = async (email: string): Promise<User | null> => {
+  const user = await prisma.user.findFirst({
     where: {
-      email,
+      email: {
+        equals: email,
+        mode: 'insensitive',
+      },
     },
   });
-  console.log(user);
+  console.log('User found by email:', user);
   return user;
 };
 
@@ -238,12 +246,8 @@ const authenticateUser = async (request): Promise<User | null> => {
         const userId = tokenPayload.userId;
         return await prisma.user.findUnique({ where: { id: userId } });
       } catch (error) {
-        console.log(error);
-        if (error instanceof JsonWebTokenError || error instanceof TokenExpiredError) {
-          throw new AuthenticationError('User is not authenticated. Session token is Invalid');
-        } else {
-          throw new AuthenticationError('User is not authenticated. Session token verification failed');
-        }
+        console.log('Authentication failed:', error.message);
+        return null;
       }
     }
   }
@@ -340,11 +344,7 @@ const updateUserBackgroundColor = async (userId: string, backgroundColor: string
 
 // Updated createUser function to match the Prisma schema
 const createUser = async (email: string, password: string, role: number) => {
-  const user = await prisma.user.findUnique({
-    where: {
-      email,
-    },
-  });
+  const user = await getUserByEmail(email);
   if (user) {
     throw new UserAuthException('User already exists');
   }
