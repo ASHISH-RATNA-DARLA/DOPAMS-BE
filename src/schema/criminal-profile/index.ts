@@ -263,35 +263,48 @@ export const CriminalProfileType = new GraphQLObjectType({
             : profile.identityDocuments;
         if (!docs || docs.length === 0) return [];
 
-        const { prisma } = require('datasources/prisma');
-        const dbFiles = await prisma.file.findMany({
-          where: { parentId: profile.id, isDownloaded: true },
-          select: { filePath: true },
-        });
-        const downloadedPaths = new Set(dbFiles.map((f: any) => f.filePath));
+        let downloadedPaths = new Set();
+        try {
+          const { prisma } = require('datasources/prisma');
+          const dbFiles = await prisma.file.findMany({
+            where: { parentId: profile.id, isDownloaded: true },
+            select: { filePath: true },
+          });
+          downloadedPaths = new Set(dbFiles.map((f: any) => f.filePath));
+        } catch (e: any) {
+          console.error(`Error fetching downloaded paths for identity documents in profile ${profile.id}:`, e.message);
+        }
 
         // Map new schema shape {id, identityType, identityNumber, filePath} →
         // GraphQL shape {type, link, identityType, identityNumber}
-        return (docs ?? [])
-          .map((doc: any) => {
-            let path = doc.filePath ?? doc.file_path ?? doc.link ?? '';
-            if (path && !path.startsWith('http')) {
-              const baseUrl = process.env.TOMCAT_FILE_API_URL || '';
-              const separator = path.startsWith('/') || baseUrl.endsWith('/') ? '' : '/';
-              path = `${baseUrl}${separator}${path}`;
-            }
-            return {
-              type: doc.source_field ?? doc.type ?? 'IDENTITY_DETAILS',
-              link: path,
-              identityType: doc.identityType ?? doc.identity_type ?? null,
-              identityNumber: doc.identityNumber ?? doc.identity_number ?? null,
-              isDownloaded:
+        return (
+          (docs ?? [])
+            .map((doc: any) => {
+              // Prefer fileUrl (has file extension) from MV, fall back to filePath
+              let path = doc.fileUrl ?? doc.file_url ?? doc.filePath ?? doc.file_path ?? doc.link ?? '';
+              if (path && !path.startsWith('http')) {
+                let baseUrl = process.env.FILE_SERVER_BASE_URL || process.env.TOMCAT_FILE_API_URL || '';
+                if (baseUrl.endsWith('/') && path.startsWith('/')) {
+                  baseUrl = baseUrl.slice(0, -1);
+                }
+                const separator = path.startsWith('/') || baseUrl.endsWith('/') ? '' : '/';
+                path = `${baseUrl}${separator}${path}`;
+              }
+              const isDownloaded =
                 doc.is_downloaded === true ||
                 doc.isDownloaded === true ||
-                downloadedPaths.has(doc.filePath ?? doc.file_path ?? doc.link),
-            };
-          })
-          .filter((doc: any) => doc.isDownloaded);
+                downloadedPaths.has(doc.filePath ?? doc.file_path ?? doc.link);
+              return {
+                type: doc.source_field ?? doc.type ?? 'IDENTITY_DETAILS',
+                link: path,
+                identityType: doc.identityType ?? doc.identity_type ?? null,
+                identityNumber: doc.identityNumber ?? doc.identity_number ?? null,
+                isDownloaded,
+              };
+            })
+            // Only return docs that have a link AND are confirmed downloaded on the file server
+            .filter((doc: any) => doc.link && doc.isDownloaded)
+        );
       },
     },
     documents: {
@@ -301,32 +314,45 @@ export const CriminalProfileType = new GraphQLObjectType({
         const docs = typeof profile.documents === 'string' ? JSON.parse(profile.documents) : profile.documents;
         if (!docs || docs.length === 0) return [];
 
-        const { prisma } = require('datasources/prisma');
-        const dbFiles = await prisma.file.findMany({
-          where: { parentId: profile.id, isDownloaded: true },
-          select: { filePath: true },
-        });
-        const downloadedPaths = new Set(dbFiles.map((f: any) => f.filePath));
+        let downloadedPaths = new Set();
+        try {
+          const { prisma } = require('datasources/prisma');
+          const dbFiles = await prisma.file.findMany({
+            where: { parentId: profile.id, isDownloaded: true },
+            select: { filePath: true },
+          });
+          downloadedPaths = new Set(dbFiles.map((f: any) => f.filePath));
+        } catch (e: any) {
+          console.error(`Error fetching downloaded paths for documents in profile ${profile.id}:`, e.message);
+        }
 
         // Map new schema shape {id, filePath} → DocumentType shape {link, name}
-        return (docs ?? [])
-          .map((doc: any) => {
-            let path = doc.filePath ?? doc.file_path ?? doc.link ?? '';
-            if (path && !path.startsWith('http')) {
-              const baseUrl = process.env.TOMCAT_FILE_API_URL || '';
-              const separator = path.startsWith('/') || baseUrl.endsWith('/') ? '' : '/';
-              path = `${baseUrl}${separator}${path}`;
-            }
-            return {
-              link: path,
-              name: doc.name ?? doc.notes ?? null,
-              isDownloaded:
+        return (
+          (docs ?? [])
+            .map((doc: any) => {
+              // Prefer fileUrl (has file extension) from MV, fall back to filePath
+              let path = doc.fileUrl ?? doc.file_url ?? doc.filePath ?? doc.file_path ?? doc.link ?? '';
+              if (path && !path.startsWith('http')) {
+                let baseUrl = process.env.FILE_SERVER_BASE_URL || process.env.TOMCAT_FILE_API_URL || '';
+                if (baseUrl.endsWith('/') && path.startsWith('/')) {
+                  baseUrl = baseUrl.slice(0, -1);
+                }
+                const separator = path.startsWith('/') || baseUrl.endsWith('/') ? '' : '/';
+                path = `${baseUrl}${separator}${path}`;
+              }
+              const isDownloaded =
                 doc.is_downloaded === true ||
                 doc.isDownloaded === true ||
-                downloadedPaths.has(doc.filePath ?? doc.file_path ?? doc.link),
-            };
-          })
-          .filter((doc: any) => doc.isDownloaded);
+                downloadedPaths.has(doc.filePath ?? doc.file_path ?? doc.link);
+              return {
+                link: path,
+                name: doc.name ?? doc.notes ?? null,
+                isDownloaded,
+              };
+            })
+            // Only return docs that have a link AND are confirmed downloaded on the file server
+            .filter((doc: any) => doc.link && doc.isDownloaded)
+        );
       },
     },
     // crimes: new schema only has {id, firNumber, crimeRegDate} in criminal_profiles_mv.

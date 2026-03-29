@@ -18,7 +18,7 @@ import { Router, Request, Response } from 'express';
 const router = Router();
 
 /** Base URL of the Tomcat file server — only URLs starting with this are allowed */
-const ALLOWED_FILE_BASE = 'http://192.168.103.106:8080/files/';
+const ALLOWED_FILE_BASE = process.env.FILE_SERVER_BASE_URL || 'http://192.168.103.106:8080/files/';
 
 /** Map file extensions to MIME types for Content-Type header */
 function getMimeType(filename: string): string {
