@@ -62,7 +62,7 @@ const CriminalProfileSortByEnumType = new GraphQLEnumType({
     counselled: { value: 'counselled' },
     socialMedia: { value: 'socialMedia' },
     RTAData: { value: 'RTAData' },
-    bankAcountDetails: { value: 'bankAcountDetails' },
+    bankAccountDetails: { value: 'bankAccountDetails' },
     passportDetails_Foreigners: { value: 'passportDetails_Foreigners' },
     purposeOfVISA_Foreigners: { value: 'purposeOfVISA_Foreigners' },
     validityOfVISA_Foreigners: { value: 'validityOfVISA_Foreigners' },

@@ -192,6 +192,15 @@ export const CrimeType = new GraphQLObjectType({
   }),
 });
 
+const CrimesInvolvedType = new GraphQLObjectType({
+  name: 'CrimesInvolvedType',
+  fields: () => ({
+    crimeId: { type: GraphQLString },
+    accusedId: { type: GraphQLString },
+    accusedRole: { type: GraphQLString },
+  }),
+});
+
 export const CriminalProfileType = new GraphQLObjectType({
   name: 'CriminalProfile',
   fields: () => ({
@@ -246,32 +255,78 @@ export const CriminalProfileType = new GraphQLObjectType({
     // mapped to the existing IdentityDocumentType with field resolvers below
     identityDocuments: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(IdentityDocumentType))),
-      resolve: profile => {
+      resolve: async profile => {
         if (!profile.identityDocuments) return [];
         const docs =
           typeof profile.identityDocuments === 'string'
             ? JSON.parse(profile.identityDocuments)
             : profile.identityDocuments;
+        if (!docs || docs.length === 0) return [];
+
+        const { prisma } = require('datasources/prisma');
+        const dbFiles = await prisma.file.findMany({
+          where: { parentId: profile.id, isDownloaded: true },
+          select: { filePath: true },
+        });
+        const downloadedPaths = new Set(dbFiles.map((f: any) => f.filePath));
+
         // Map new schema shape {id, identityType, identityNumber, filePath} →
         // GraphQL shape {type, link, identityType, identityNumber}
-        return (docs ?? []).map((doc: any) => ({
-          type: doc.source_field ?? 'IDENTITY_DETAILS',
-          link: doc.filePath ?? doc.file_path ?? doc.link ?? '',
-          identityType: doc.identityType ?? doc.identity_type ?? null,
-          identityNumber: doc.identityNumber ?? doc.identity_number ?? null,
-        }));
+        return (docs ?? [])
+          .map((doc: any) => {
+            let path = doc.filePath ?? doc.file_path ?? doc.link ?? '';
+            if (path && !path.startsWith('http')) {
+              const baseUrl = process.env.TOMCAT_FILE_API_URL || '';
+              const separator = path.startsWith('/') || baseUrl.endsWith('/') ? '' : '/';
+              path = `${baseUrl}${separator}${path}`;
+            }
+            return {
+              type: doc.source_field ?? doc.type ?? 'IDENTITY_DETAILS',
+              link: path,
+              identityType: doc.identityType ?? doc.identity_type ?? null,
+              identityNumber: doc.identityNumber ?? doc.identity_number ?? null,
+              isDownloaded:
+                doc.is_downloaded === true ||
+                doc.isDownloaded === true ||
+                downloadedPaths.has(doc.filePath ?? doc.file_path ?? doc.link),
+            };
+          })
+          .filter((doc: any) => doc.isDownloaded);
       },
     },
     documents: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(DocumentType))),
-      resolve: profile => {
+      resolve: async profile => {
         if (!profile.documents) return [];
         const docs = typeof profile.documents === 'string' ? JSON.parse(profile.documents) : profile.documents;
+        if (!docs || docs.length === 0) return [];
+
+        const { prisma } = require('datasources/prisma');
+        const dbFiles = await prisma.file.findMany({
+          where: { parentId: profile.id, isDownloaded: true },
+          select: { filePath: true },
+        });
+        const downloadedPaths = new Set(dbFiles.map((f: any) => f.filePath));
+
         // Map new schema shape {id, filePath} → DocumentType shape {link, name}
-        return (docs ?? []).map((doc: any) => ({
-          link: doc.filePath ?? doc.file_path ?? doc.link ?? '',
-          name: doc.name ?? doc.notes ?? null,
-        }));
+        return (docs ?? [])
+          .map((doc: any) => {
+            let path = doc.filePath ?? doc.file_path ?? doc.link ?? '';
+            if (path && !path.startsWith('http')) {
+              const baseUrl = process.env.TOMCAT_FILE_API_URL || '';
+              const separator = path.startsWith('/') || baseUrl.endsWith('/') ? '' : '/';
+              path = `${baseUrl}${separator}${path}`;
+            }
+            return {
+              link: path,
+              name: doc.name ?? doc.notes ?? null,
+              isDownloaded:
+                doc.is_downloaded === true ||
+                doc.isDownloaded === true ||
+                downloadedPaths.has(doc.filePath ?? doc.file_path ?? doc.link),
+            };
+          })
+          .filter((doc: any) => doc.isDownloaded);
       },
     },
     // crimes: new schema only has {id, firNumber, crimeRegDate} in criminal_profiles_mv.
@@ -286,6 +341,7 @@ export const CriminalProfileType = new GraphQLObjectType({
     latestCrimeId: { type: GraphQLString },
     noOfCrimes: { type: GraphQLInt, resolve: profile => Number(profile.noOfCrimes) },
     arrestCount: { type: GraphQLInt, resolve: profile => Number(profile.arrestCount) },
+    lastArrestDate: { type: GraphQLString },
     previouslyInvolvedCases: {
       type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(PreviouslyInvolvedCrimesType))),
     },
@@ -293,7 +349,7 @@ export const CriminalProfileType = new GraphQLObjectType({
     counselled: { type: GraphQLString },
     socialMedia: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     RTAData: { type: GraphQLString },
-    bankAcountDetails: { type: GraphQLString },
+    bankAccountDetails: { type: GraphQLString },
     passportDetails_Foreigners: { type: GraphQLString },
     purposeOfVISA_Foreigners: { type: GraphQLString },
     validityOfVISA_Foreigners: { type: GraphQLString },
@@ -303,6 +359,8 @@ export const CriminalProfileType = new GraphQLObjectType({
     historySheet: { type: GraphQLString },
     propertyForfeited: { type: GraphQLString },
     PITNDPSInitiated: { type: GraphQLString },
+    crimesInvolved: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(CrimesInvolvedType))) },
+    accusedRoles: { type: new GraphQLNonNull(new GraphQLList(new GraphQLNonNull(GraphQLString))) },
     photo: { type: GraphQLString },
   }),
 });
@@ -322,6 +380,7 @@ export const IdentityDocumentType = new GraphQLObjectType({
     link: { type: new GraphQLNonNull(GraphQLString) },
     identityType: { type: GraphQLString },
     identityNumber: { type: GraphQLString },
+    isDownloaded: { type: GraphQLBoolean },
   }),
 });
 

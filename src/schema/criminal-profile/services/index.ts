@@ -293,20 +293,39 @@ export async function getCriminalProfiles(
   // For the list view the frontend only needs lightweight profile cards —
   // crimes array is populated lazily when viewing a single profile.
   // Return lightweight crimes stubs (id + firNumber + crimeRegDate) from the MV.
-  const mappedNodes = nodes.map(profile => ({
-    ...profile,
-    crimes: (() => {
+  const mappedNodes = nodes.map(profile => {
+    // --- crimes stub ---
+    const crimes = (() => {
       if (!profile.crimes) return [];
       const raw = typeof profile.crimes === 'string' ? JSON.parse(profile.crimes) : profile.crimes;
       return (raw ?? []).map((c: any) => ({
         id: c.id ?? c.crime_id,
         firNumber: c.firNumber ?? c.fir_num,
         crimeRegDate: c.crimeRegDate ?? c.fir_date,
+        accusedType: c.accusedType ?? null, // now present in enriched MV crimes JSONB
+        accusedStatus: c.accusedStatus ?? null, // now present in enriched MV crimes JSONB
         chargesheets: [],
         interrogationReports: [],
       }));
-    })(),
-  }));
+    })();
+
+    // --- previouslyInvolvedCases: MV now outputs {id, value} directly.
+    // Safety fallback to handle any transition-period rows still using {crimeId, firNumber}.
+    let previouslyInvolvedCases = profile.previouslyInvolvedCases;
+    if (Array.isArray(previouslyInvolvedCases)) {
+      previouslyInvolvedCases = previouslyInvolvedCases.map((c: any) => ({
+        id: c.id ?? c.crimeId,
+        value: c.value ?? c.firNumber,
+      }));
+    }
+
+    const crimesInvolved = Array.isArray(profile.crimesInvolved) ? profile.crimesInvolved : [];
+    const accusedRoles = Array.isArray(profile.accusedRoles) ? profile.accusedRoles : [];
+    const associatedDrugs = Array.isArray(profile.associatedDrugs) ? profile.associatedDrugs : [];
+    const DOPAMSLinks = Array.isArray(profile.DOPAMSLinks) ? profile.DOPAMSLinks : [];
+
+    return { ...profile, crimes, previouslyInvolvedCases, crimesInvolved, accusedRoles, associatedDrugs, DOPAMSLinks };
+  });
 
   const pageInfo = buildPageInfo(page, limit, totalCount[0].count);
   return { nodes: mappedNodes, pageInfo };

@@ -70,7 +70,24 @@ export function buildFilters(filters: AccusedFilterInput = {}) {
   const state = filters.state;
   if (state && state.length) {
     params.push(state);
-    clauses.push(`"presentStateUt" ILIKE ANY($${params.length}::text[])`);
+    const cond = `ILIKE ANY($${params.length}::text[])`;
+    clauses.push(`
+      (
+        (
+          NULLIF("permanentDistrict", '') IS NOT NULL AND 
+          NULLIF("permanentStateUt", '') IS NOT NULL AND 
+          NULLIF("permanentCountry", '') IS NOT NULL AND 
+          "permanentStateUt" ${cond}
+        )
+        OR
+        (
+          (NULLIF("permanentDistrict", '') IS NULL OR 
+           NULLIF("permanentStateUt", '') IS NULL OR 
+           NULLIF("permanentCountry", '') IS NULL) AND 
+          "presentStateUt" ${cond}
+        )
+      )
+    `);
   }
 
   const gender = filters.gender;
@@ -156,8 +173,36 @@ export function buildFilters(filters: AccusedFilterInput = {}) {
     Object.entries(domicile).forEach(([key, value]) => {
       const col = domicileColumnMap[key];
       if (col && value && value.trim() !== '') {
-        params.push(`%${value}%`);
-        clauses.push(`"${col}" ILIKE $${params.length}`);
+        const val = `%${value}%`;
+        params.push(val);
+        const pIdx = params.length;
+
+        if (['district', 'stateUT', 'country'].includes(key)) {
+          const permCol =
+            key === 'district' ? 'permanentDistrict' : key === 'stateUT' ? 'permanentStateUt' : 'permanentCountry';
+          const presCol =
+            key === 'district' ? 'presentDistrict' : key === 'stateUT' ? 'presentStateUt' : 'presentCountry';
+
+          clauses.push(`
+            (
+              (
+                NULLIF("permanentDistrict", '') IS NOT NULL AND 
+                NULLIF("permanentStateUt", '') IS NOT NULL AND 
+                NULLIF("permanentCountry", '') IS NOT NULL AND 
+                "${permCol}" ILIKE $${pIdx}
+              )
+              OR
+              (
+                (NULLIF("permanentDistrict", '') IS NULL OR 
+                 NULLIF("permanentStateUt", '') IS NULL OR 
+                 NULLIF("permanentCountry", '') IS NULL) AND 
+                "${presCol}" ILIKE $${pIdx}
+              )
+            )
+          `);
+        } else {
+          clauses.push(`"${col}" ILIKE $${pIdx}`);
+        }
       }
     });
   }

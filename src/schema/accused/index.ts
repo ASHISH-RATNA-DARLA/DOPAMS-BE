@@ -104,6 +104,34 @@ export const AccusedType = new GraphQLObjectType({
     caseStatus: { type: GraphQLString },
     presentAddress: { type: GraphQLString },
     permanentAddress: { type: GraphQLString },
+    accusedDistrict: {
+      type: GraphQLString,
+      resolve: parent => {
+        const isPermanentFull = parent.permanentDistrict && parent.permanentStateUt && parent.permanentCountry;
+        return isPermanentFull ? parent.permanentDistrict : parent.presentDistrict;
+      },
+    },
+    accusedState: {
+      type: GraphQLString,
+      resolve: parent => {
+        const isPermanentFull = parent.permanentDistrict && parent.permanentStateUt && parent.permanentCountry;
+        return isPermanentFull ? parent.permanentStateUt : parent.presentStateUt;
+      },
+    },
+    accusedCountry: {
+      type: GraphQLString,
+      resolve: parent => {
+        const isPermanentFull = parent.permanentDistrict && parent.permanentStateUt && parent.permanentCountry;
+        return isPermanentFull ? parent.permanentCountry : parent.presentCountry;
+      },
+    },
+    accusedAddress: {
+      type: GraphQLString,
+      resolve: parent => {
+        const isPermanentFull = parent.permanentDistrict && parent.permanentStateUt && parent.permanentCountry;
+        return isPermanentFull ? parent.permanentAddress : parent.presentAddress;
+      },
+    },
     disposalDetails: { type: new GraphQLList(new GraphQLNonNull(DisposalDetailsType)) },
   }),
 });

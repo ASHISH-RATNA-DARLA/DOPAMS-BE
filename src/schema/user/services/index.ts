@@ -218,6 +218,7 @@ const getUsers = async (
   } = {}
 ) => {
   const { text = '', status, roles } = filters;
+  console.log('getUsers filters:', { text, status, roles });
   const [users, pageInfo] = await prisma.user
     .paginate({
       where: {
@@ -234,6 +235,7 @@ const getUsers = async (
       limit,
     });
 
+  console.log(`getUsers returned ${users.length} users. totalCount: ${pageInfo.totalCount}`);
   return { users, pageInfo };
 };
 
