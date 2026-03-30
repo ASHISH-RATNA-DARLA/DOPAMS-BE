@@ -40,24 +40,27 @@ function getMimeType(filename: string): string {
   return mimeMap[ext] ?? 'application/octet-stream';
 }
 
-router.get('/file-proxy', async (req: Request, res: Response) => {
+router.get('/file-proxy', async (req: Request, res: Response): Promise<void> => {
   const fileUrl = req.query.url as string | undefined;
 
   // Validate URL is present
   if (!fileUrl) {
-    return res.status(400).json({ error: 'Missing url query parameter' });
+    res.status(400).json({ error: 'Missing url query parameter' });
+    return;
   }
 
   // Security: only proxy URLs from the known Tomcat file server
   if (!fileUrl.startsWith(ALLOWED_FILE_BASE)) {
-    return res.status(403).json({ error: 'URL not allowed' });
+    res.status(403).json({ error: 'URL not allowed' });
+    return;
   }
 
   try {
     const upstream = await fetch(fileUrl);
 
     if (!upstream.ok) {
-      return res.status(upstream.status).json({ error: 'File not found on file server' });
+      res.status(upstream.status).json({ error: 'File not found on file server' });
+      return;
     }
 
     const filename = fileUrl.split('/').pop() ?? 'file';
@@ -86,9 +89,11 @@ router.get('/file-proxy', async (req: Request, res: Response) => {
     // Stream the file body to the response
     const buffer = await upstream.arrayBuffer();
     res.send(Buffer.from(buffer));
+    return;
   } catch (err) {
     console.error('[fileProxy] Error fetching file:', err);
     res.status(500).json({ error: 'Failed to fetch file from file server' });
+    return;
   }
 });
 

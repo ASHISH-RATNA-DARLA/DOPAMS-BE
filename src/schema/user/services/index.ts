@@ -1,12 +1,11 @@
 import { Prisma, User } from '@prisma/client';
-import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
+import { JwtPayload } from 'jsonwebtoken';
 import { v4 } from 'uuid';
 import UserAuthException from 'utils/errors/userAuthException';
 import { generateAccessToken, generateUserInviteToken, verifyToken } from 'utils/jwt';
 import hashPassword, { getEnumValue } from 'utils/misc';
 import { sendEmail, templates } from 'utils/sendgrid';
 import UserStatusEnumType from '../enums/user-status';
-import AuthenticationError from 'utils/errors/authentication-error';
 import bcrypt from 'bcrypt';
 import UserRoleEnumType from '../enums/user-role';
 import { prisma } from 'datasources/prisma';
@@ -248,7 +247,8 @@ const authenticateUser = async (request): Promise<User | null> => {
         const userId = tokenPayload.userId;
         return await prisma.user.findUnique({ where: { id: userId } });
       } catch (error) {
-        console.log('Authentication failed:', error.message);
+        const message = error instanceof Error ? error.message : 'Unknown authentication error';
+        console.log('Authentication failed:', message);
         return null;
       }
     }

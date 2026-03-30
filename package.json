@@ -11,7 +11,7 @@
     "dev": "NODE_PATH=$NODE_PATH:./src ts-node-dev --respawn --transpile-only ./src/server.ts",
     "dev-windows": "set NODE_PATH=$NODE_PATH:./src && ts-node-dev --respawn --transpile-only ./src/server.ts",
     "build": "NODE_PATH=$NODE_PATH:./src tsc",
-    "prod": "NODE_PATH=$NODE_PATH:./src tsc && node ./build/src/server.js",
+    "prod": "NODE_PATH=$NODE_PATH:./src tsc && node ./build/server.js",
     "db:start": "docker-compose -f docker-compose-dev.yml up",
     "postinstall": "link-module-alias && husky install"
   },
