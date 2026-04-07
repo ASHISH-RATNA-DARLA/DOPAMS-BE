@@ -27,9 +27,8 @@ type Tables = 'crimes' | 'accused' | 'hierarchy' | 'persons';
 //     accused.is_ccl      (snake_case) → MV alias "isCCL"
 //     accused.accused_code→ MV alias "accusedCode"
 //
-//  2. accusedType  → in MV it is `a.type AS "accusedType"` (same source as `type`)
-//     accusedStatus → in MV it is `COALESCE(bfa.status, a.accused_status) AS "accusedStatus"`
-//     Both come from the accused table in the MV, NOT brief_facts_accused.
+//  2. accusedType  → in MV it is COALESCE(bfa.accused_type, a.type) AS "accusedRole"
+//     accusedStatus → in MV it is computed CASE ... END AS "accusedStatus"
 //     Table assignment stays 'accused' so the accuseds MV is chosen.
 //
 //  3. domicile → persons.domicile_classification aliased as "domicile" in MV.
@@ -42,6 +41,8 @@ type Tables = 'crimes' | 'accused' | 'hierarchy' | 'persons';
 //  5. Drug fields → brief_facts_drug is aggregated into the JSONB column
 //     "drugDetails" inside both MVs. The jsonPath approach is correct.
 //     Table is 'crimes' so firs MV is used (drugs don't require accused join).
+//     The MV definition for drugDetails uses 'quantity' (string) instead of
+//     granular numeric fields (quantityKg, quantityMl, quantityCount).
 //
 //  6. presentAddress / permanentAddress → computed concat_ws columns in
 //     accuseds MV. They exist only in the accuseds MV, so table = 'persons'.
@@ -78,9 +79,9 @@ const FIELD_MAP: Record<keyof AdvancedSearch, { base: string; table: Tables; jso
   // jsonPath keys match the jsonb_build_object keys in the MV definition:
   //   'name', 'quantityKg', 'quantityMl', 'quantityCount', 'worth'
   drugType: { base: '"drugDetails"', jsonPath: "'name'", table: 'crimes' },
-  drugQuantityKg: { base: '"drugDetails"', jsonPath: "'quantityKg'", table: 'crimes', cast: 'numeric' },
-  drugQuantityMl: { base: '"drugDetails"', jsonPath: "'quantityMl'", table: 'crimes', cast: 'numeric' },
-  drugQuantityCount: { base: '"drugDetails"', jsonPath: "'quantityCount'", table: 'crimes', cast: 'numeric' },
+  drugQuantityKg: { base: '"drugDetails"', jsonPath: "'quantity'", table: 'crimes', cast: 'text' },
+  drugQuantityMl: { base: '"drugDetails"', jsonPath: "'quantity'", table: 'crimes', cast: 'text' },
+  drugQuantityCount: { base: '"drugDetails"', jsonPath: "'quantity'", table: 'crimes', cast: 'text' },
   drugWorth: { base: '"drugDetails"', jsonPath: "'worth'", table: 'crimes', cast: 'numeric' },
 
   // ── hierarchy table (embedded in both MVs via JOIN) ───────────────────────
@@ -125,7 +126,7 @@ const FIELD_MAP: Record<keyof AdvancedSearch, { base: string; table: Tables; jso
   nose: { base: '"nose"', table: 'accused' },
   teeth: { base: '"teeth"', table: 'accused' },
   // accusedType → MV: a.type AS "accusedType" (same underlying column as type)
-  accusedType: { base: '"accusedType"', table: 'accused' },
+  accusedType: { base: '"accusedRole"', table: 'accused' },
   // accusedStatus → MV: COALESCE(bfa.status, a.accused_status) AS "accusedStatus"
   accusedStatus: { base: '"accusedStatus"', table: 'accused' },
 
@@ -290,9 +291,22 @@ function buildCondition(f: FirAdvancedFilterInput, params: any[], paramIndex: nu
 
   // ── All other operators (equals, gt, gte, lt, lte) ────────────────────────
   params.push(value);
-  const p1 = `CAST($${paramIndex} AS ${sqlType})`;
 
   if (info.jsonPath) {
+    if (operator === 'equals' && sqlType === 'text') {
+      return {
+        condition: `
+          EXISTS (
+            SELECT 1
+            FROM jsonb_array_elements(${info.base}) AS elem
+            WHERE UPPER(TRIM(CAST(elem->>${info.jsonPath} AS text))) = UPPER(TRIM($${paramIndex}::text))
+          )
+        `,
+        nextIndex: paramIndex + 1,
+      };
+    }
+
+    const p1 = `CAST($${paramIndex} AS ${sqlType})`;
     return {
       condition: `
         EXISTS (
@@ -305,6 +319,14 @@ function buildCondition(f: FirAdvancedFilterInput, params: any[], paramIndex: nu
     };
   }
 
+  if (operator === 'equals' && sqlType === 'text') {
+    return {
+      condition: `UPPER(TRIM(${info.base}::text)) = UPPER(TRIM($${paramIndex}::text))`,
+      nextIndex: paramIndex + 1,
+    };
+  }
+
+  const p1 = `CAST($${paramIndex} AS ${sqlType})`;
   return {
     condition: `${info.base}::${sqlType} ${sqlOp} ${p1}`,
     nextIndex: paramIndex + 1,
@@ -412,7 +434,7 @@ export async function advancedSearch(
       ...params
     ),
     prisma.$queryRawUnsafe<{ count: number }[]>(
-      `SELECT COUNT(*)::int AS count FROM ${view} ${whereClause};`,
+      `SELECT COUNT(DISTINCT id)::int AS count FROM ${view} ${whereClause};`,
       ...params
     ),
   ]);

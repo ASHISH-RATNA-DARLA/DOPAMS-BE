@@ -50,6 +50,8 @@ export const FirType = new GraphQLObjectType({
     firCopyUrl: { type: GraphQLString }, // NEW — full Tomcat URL computed by MV
     propertyDocuments: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) },
     irDocuments: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) },
+    chargesheetDocuments: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) },
+    moMediaDocuments: { type: new GraphQLList(new GraphQLNonNull(FileDetailsType)) },
     disposalDetails: { type: new GraphQLList(new GraphQLNonNull(DisposalDetailsType)) },
     irDetails: { type: new GraphQLList(new GraphQLNonNull(IrDetailsType)) },
     casePropertyDetails: { type: new GraphQLList(new GraphQLNonNull(CasePropertyDetailsType)) },
@@ -67,6 +69,7 @@ const FileDetailsType = new GraphQLObjectType({
     filePath: { type: GraphQLString },
     fileUrl: { type: GraphQLString }, // NEW — full Tomcat URL
     link: { type: GraphQLString }, // kept for backward compat
+    isDownloaded: { type: GraphQLBoolean },
   }),
 });
 

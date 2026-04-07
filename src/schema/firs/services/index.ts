@@ -712,27 +712,46 @@ export async function getFirsAbstract(filters: FirFilterInput = {}): Promise<Cri
     }[]
   >(
     `
+    WITH base AS (
+      SELECT 
+        *,
+        ("disposalDetails" IS NOT NULL AND jsonb_array_length("disposalDetails") > 0) AS has_disposal,
+        EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Acquittal%') AS has_acquittal,
+        EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Convict%') AS has_conviction,
+        UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION') AS is_ui,
+        ("chargesheets" IS NOT NULL AND jsonb_array_length("chargesheets") > 0) AS has_cs,
+        UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL') AS is_pt
+      FROM firs_mv
+      ${whereClause}
+    )
     SELECT 
       COALESCE(unit, 'Unknown Unit') AS unit,
       COALESCE(ps, 'Unknown PS') AS ps,
       COALESCE(year::text, 'Unknown Year') AS year,
       COUNT(*)::int AS total,
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION'))::int AS "underInvestigation",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL'))::int AS "pendingInTrial",
-      SUM(CASE WHEN "chargesheets" IS NOT NULL AND jsonb_array_length("chargesheets") > 0 THEN 1 ELSE 0 END)::int AS chargesheeted,
-      COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' NOT ILIKE '%Acquittal%' AND elem->>'disposalType' NOT ILIKE '%Convict%') THEN id END)::int AS disposed,
-      COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Acquittal%') THEN id END)::int AS acquittal,
-      COUNT(DISTINCT CASE WHEN EXISTS (SELECT 1 FROM jsonb_array_elements("disposalDetails") elem WHERE elem->>'disposalType' ILIKE '%Convict%') THEN id END)::int AS conviction,
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION') AND UPPER(TRIM("caseClassification")) = 'COMMERCIAL')::int AS "uiCommercialQuantity",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION') AND UPPER(TRIM("caseClassification")) = 'INTERMEDIATE')::int AS "uiIntermediateQuantity",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION') AND UPPER(TRIM("caseClassification")) = 'SMALL')::int AS "uiSmallQuantity",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('UI', 'UNDER INVESTIGATION') AND UPPER(TRIM("caseClassification")) = 'CULTIVATION')::int AS "uiCultivation",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL') AND UPPER(TRIM("caseClassification")) = 'SMALL')::int AS "ptSmallQuantity",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL') AND UPPER(TRIM("caseClassification")) = 'INTERMEDIATE')::int AS "ptIntermediateQuantity",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL') AND UPPER(TRIM("caseClassification")) = 'COMMERCIAL')::int AS "ptCommercialQuantity",
-      COUNT(*) FILTER (WHERE UPPER(TRIM("caseStatus")) IN ('PT', 'PENDING TRIAL') AND UPPER(TRIM("caseClassification")) = 'CULTIVATION')::int AS "ptCultivation"
-    FROM firs_mv
-    ${whereClause}
+      -- UI: NOT disposal AND status UI
+      COUNT(*) FILTER (WHERE NOT has_disposal AND is_ui)::int AS "underInvestigation",
+      -- CS: NOT disposal AND NOT UI AND has CS
+      COUNT(*) FILTER (WHERE NOT has_disposal AND NOT is_ui AND has_cs)::int AS "chargesheeted",
+      -- PT: NOT disposal AND NOT UI AND NOT CS AND status PT
+      COUNT(*) FILTER (WHERE NOT has_disposal AND NOT is_ui AND NOT has_cs AND is_pt)::int AS "pendingInTrial",
+      -- Acquittal: has disposal AND has acquittal
+      COUNT(*) FILTER (WHERE has_disposal AND has_acquittal)::int AS "acquittal",
+      -- Conviction: has disposal AND NOT acquittal AND has conviction
+      COUNT(*) FILTER (WHERE has_disposal AND NOT has_acquittal AND has_conviction)::int AS "conviction",
+      -- Disposed: has disposal AND NOT acquittal AND NOT conviction
+      COUNT(*) FILTER (WHERE has_disposal AND NOT has_acquittal AND NOT has_conviction)::int AS "disposed",
+      -- UI Quantities
+      COUNT(*) FILTER (WHERE NOT has_disposal AND is_ui AND UPPER(TRIM("caseClassification")) = 'COMMERCIAL')::int AS "uiCommercialQuantity",
+      COUNT(*) FILTER (WHERE NOT has_disposal AND is_ui AND UPPER(TRIM("caseClassification")) = 'INTERMEDIATE')::int AS "uiIntermediateQuantity",
+      COUNT(*) FILTER (WHERE NOT has_disposal AND is_ui AND UPPER(TRIM("caseClassification")) = 'SMALL')::int AS "uiSmallQuantity",
+      COUNT(*) FILTER (WHERE NOT has_disposal AND is_ui AND UPPER(TRIM("caseClassification")) = 'CULTIVATION')::int AS "uiCultivation",
+      -- PT Quantities (including CS per frontend logic)
+      COUNT(*) FILTER (WHERE NOT has_disposal AND NOT is_ui AND (has_cs OR is_pt) AND UPPER(TRIM("caseClassification")) = 'SMALL')::int AS "ptSmallQuantity",
+      COUNT(*) FILTER (WHERE NOT has_disposal AND NOT is_ui AND (has_cs OR is_pt) AND UPPER(TRIM("caseClassification")) = 'INTERMEDIATE')::int AS "ptIntermediateQuantity",
+      COUNT(*) FILTER (WHERE NOT has_disposal AND NOT is_ui AND (has_cs OR is_pt) AND UPPER(TRIM("caseClassification")) = 'COMMERCIAL')::int AS "ptCommercialQuantity",
+      COUNT(*) FILTER (WHERE NOT has_disposal AND NOT is_ui AND (has_cs OR is_pt) AND UPPER(TRIM("caseClassification")) = 'CULTIVATION')::int AS "ptCultivation"
+    FROM base
     GROUP BY unit, ps, year
     ORDER BY unit, ps, year;
   `,
