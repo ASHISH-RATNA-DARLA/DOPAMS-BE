@@ -167,12 +167,12 @@ export function buildFilters(filters: FirFilterInput = {}) {
 
   const drugTypes = filters.drugTypes;
   if (drugTypes && drugTypes.length) {
-    params.push(drugTypes);
+    params.push(drugTypes.map(d => d.toLowerCase()));
     clauses.push(`
       EXISTS (
         SELECT 1
         FROM unnest("drugType") AS "drugNames"
-        WHERE "drugNames" ILIKE ANY(SELECT '%' || unnest($${params.length}::text[]) || '%')
+        WHERE LOWER(TRIM("drugNames")) = ANY($${params.length}::text[])
       )
     `);
   }
