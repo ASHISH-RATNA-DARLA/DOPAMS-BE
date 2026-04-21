@@ -77,15 +77,27 @@ const toProxyUrl = (pathOrUrl: string | null | undefined) => {
   return `/api/file-proxy?url=${encodeURIComponent(tomcatFileUrl)}`;
 };
 
+const isDayjsInput = (value: unknown): value is string | number | Date | dayjs.Dayjs => {
+  return typeof value === 'string' || typeof value === 'number' || value instanceof Date || dayjs.isDayjs(value);
+};
+
 const toDateString = (value: unknown): string | null => {
-  if (!value) {
+  if (!value || !isDayjsInput(value)) {
     return null;
   }
 
-  return dayjs(value).format('YYYY-MM-DD');
+  const parsedDate = dayjs(value);
+  return parsedDate.isValid() ? parsedDate.format('YYYY-MM-DD') : null;
 };
 
-const toTimestampString = (value: unknown): string => dayjs(value).toISOString();
+const toTimestampString = (value: unknown): string => {
+  if (!isDayjsInput(value)) {
+    return '';
+  }
+
+  const parsedDate = dayjs(value);
+  return parsedDate.isValid() ? parsedDate.toISOString() : '';
+};
 
 const mapFields = <TFields extends readonly string[]>(
   row: Record<string, unknown>,

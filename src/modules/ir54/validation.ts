@@ -117,6 +117,16 @@ const emptyScalarFields = (): Ir54ScalarFields => {
   }, {} as Ir54ScalarFields);
 };
 
+const toScalarFieldRecord = (payload: Ir54NormalizedRecordInput): Record<string, string | null> => {
+  return IR54_MAIN_FIELDS.reduce(
+    (accumulator, field) => {
+      accumulator[field] = payload[field];
+      return accumulator;
+    },
+    {} as Record<string, string | null>
+  );
+};
+
 export const normalizeIr54RecordInput = (payload: Ir54RecordInput): Ir54NormalizedRecordInput => {
   const scalarFields = emptyScalarFields();
 
@@ -141,8 +151,9 @@ export const normalizeIr54RecordInput = (payload: Ir54RecordInput): Ir54Normaliz
 
 export const validateIr54RecordInput = (payload: Ir54NormalizedRecordInput) => {
   const issues: Ir54ValidationIssue[] = [];
+  const scalarFieldData = toScalarFieldRecord(payload);
 
-  validateRequiredFields(issues, payload as Record<string, string | null>, IR54_REQUIRED_MAIN_FIELDS);
+  validateRequiredFields(issues, scalarFieldData, IR54_REQUIRED_MAIN_FIELDS);
 
   if (payload.Offender_Type === 'Other' && !payload.other_offender_type) {
     issues.push({
@@ -151,7 +162,7 @@ export const validateIr54RecordInput = (payload: Ir54NormalizedRecordInput) => {
     });
   }
 
-  validateDateFields(issues, payload as Record<string, string | null>, [
+  validateDateFields(issues, scalarFieldData, [
     'Date_of_Report',
     'Passport_Date_of_Issue',
     'Date_of_Passport_Expiry',
