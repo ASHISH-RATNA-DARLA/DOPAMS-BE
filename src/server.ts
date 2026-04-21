@@ -16,6 +16,8 @@ import { cirkleLogger, logger } from './utils/logger';
 import { generateReferenceId, returnSuccessHTTPResponse } from './utils/misc';
 import { authenticateUser } from './schema/user/services';
 import fileProxyRouter from './routes/fileProxy';
+import ir54Router from './modules/ir54/router';
+import { ensureIr54SchemaReady } from './modules/ir54/db';
 
 dotenv.config();
 const { PORT, NODE_ENV } = process.env;
@@ -84,12 +86,17 @@ app.use(
 
 // Mount REST API routes (file proxy, etc.)
 app.use('/api', fileProxyRouter);
+app.use('/api/ir54', ir54Router);
+app.use('/ir54', ir54Router);
 
 app.get('/version', (_req: Request, res: Response): void => {
   getVersion(res);
 });
 
 startServer();
+ensureIr54SchemaReady().catch(error => {
+  logger.error('IR54 database bootstrap failed during server startup', error);
+});
 app.listen({ port: PORT }, async () => {
   logger.info(`Apollo Server on http://localhost:${PORT}/graphql`);
 });

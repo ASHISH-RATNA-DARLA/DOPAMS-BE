@@ -10,6 +10,8 @@
     "tsc": "tsc --traceResolution",
     "dev": "NODE_PATH=$NODE_PATH:./src ts-node-dev --respawn --transpile-only ./src/server.ts",
     "dev-windows": "set NODE_PATH=$NODE_PATH:./src && ts-node-dev --respawn --transpile-only ./src/server.ts",
+    "ir54:migrate": "NODE_PATH=$NODE_PATH:./src ts-node ./src/modules/ir54/migrate.ts",
+    "ir54:migrate-windows": "set NODE_PATH=$NODE_PATH:./src && ts-node ./src/modules/ir54/migrate.ts",
     "build": "NODE_PATH=$NODE_PATH:./src tsc",
     "prod": "NODE_PATH=$NODE_PATH:./src tsc && node ./build/server.js",
     "db:start": "docker-compose -f docker-compose-dev.yml up",
