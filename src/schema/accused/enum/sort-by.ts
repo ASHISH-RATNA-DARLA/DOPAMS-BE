@@ -14,6 +14,7 @@ const AccusedSortByEnumType = new GraphQLEnumType({
     section: { value: 'section' },
     crimeRegDate: { value: 'crimeRegDate' },
     briefFacts: { value: 'briefFacts' },
+    fullName: { value: 'fullName' },
     accusedCode: { value: 'accusedCode' },
     seqNum: { value: 'seqNum' },
     isCCL: { value: 'isCCL' },
